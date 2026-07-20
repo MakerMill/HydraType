@@ -1,0 +1,10 @@
+parameters:
+  level: 10
+  paths:
+    - src
+    - tests
+    - benchmarks/Support
+  excludePaths:
+    analyse:
+      - cached (?)
+      - src/Docs (?)

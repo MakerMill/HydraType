@@ -1,0 +1,9 @@
+# grumphp.yml
+
+grumphp:
+    tasks:
+        composer_script:
+            script: phpcs
+            triggered_by: [php]
+        phpstan:
+            use_grumphp_paths: false

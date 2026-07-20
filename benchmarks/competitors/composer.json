@@ -1,0 +1,23 @@
+{
+    "name": "makermill/hydratype-competitor-benchmarks",
+    "description": "Isolated third-party dependencies for HydraType competitor benchmarks.",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": "^8.2",
+        "cuyz/valinor": "^2.5",
+        "eventsauce/object-hydrator": "^1.8",
+        "laminas/laminas-hydrator": "^4.19",
+        "ocramius/generated-hydrator": "^4.6",
+        "patchlevel/hydrator": "^2.0",
+        "sunrise/hydrator": "^3.20",
+        "symfony/property-access": "^7.4",
+        "symfony/serializer": "^7.4"
+    },
+    "config": {
+        "platform": {
+            "php": "8.2.0"
+        },
+        "sort-packages": true
+    }
+}

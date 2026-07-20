@@ -1,0 +1,104 @@
+{
+    "name": "makermill/hydratype",
+    "description": "Performance-first compiled object hydration and extraction for PHP.",
+    "keywords": [
+        "hydration",
+        "hydrator",
+        "extraction",
+        "object mapping",
+        "performance",
+        "code generation",
+        "mutators",
+        "assertions"
+    ],
+    "homepage": "https://github.com/makermill/hydratype",
+    "type": "library",
+    "license": "MIT",
+    "support": {
+        "issues": "https://github.com/makermill/hydratype/issues",
+        "source": "https://github.com/makermill/hydratype"
+    },
+    "prefer-stable": true,
+    "authors": [
+        {
+            "name": "Johan Gustafsson"
+        }
+    ],
+    "scripts": {
+        "test": "pest",
+        "coverage": "XDEBUG_MODE=coverage pest --coverage --coverage-filter=src",
+        "test:docker": "docker run --rm --env XDEBUG_MODE=off --volume \"${PWD}:/app\" --workdir /app php82-cli:latest vendor/bin/pest",
+        "watch": "find src -name *.php | entr phpstan analyse -c phpstan.neon",
+        "phpstan": "phpstan analyse -c phpstan.neon",
+        "phpstan:docker": "docker run --rm --env XDEBUG_MODE=off --volume \"${PWD}:/app\" --workdir /app php82-cli:latest vendor/bin/phpstan analyse -c phpstan.neon --no-progress --memory-limit=1G",
+        "phpcs": "phpcs --standard=modified_psr12_ruleset.xml src benchmarks",
+        "phpcs:docker": "docker run --rm --env XDEBUG_MODE=off --volume \"${PWD}:/app\" --workdir /app php82-cli:latest vendor/bin/phpcs --standard=modified_psr12_ruleset.xml src",
+        "phpcbf": "phpcbf --standard=modified_psr12_ruleset.xml src benchmarks",
+        "benchmark:basic": "@php -d xdebug.mode=off benchmarks/HydrationBenchmark.php",
+        "benchmark:assertions": "@php -d xdebug.mode=off benchmarks/AssertionBenchmark.php",
+        "benchmark:assertions:docker": "docker run --rm --env XDEBUG_MODE=off --volume \"${PWD}:/app\" --workdir /app php82-cli:latest php benchmarks/AssertionBenchmark.php",
+        "benchmark:cache-modes": "@php -d xdebug.mode=off benchmarks/CacheModeBenchmark.php",
+        "benchmark:cache-modes:docker": "docker run --rm --env XDEBUG_MODE=off --volume \"${PWD}:/app\" --workdir /app php82-cli:latest php benchmarks/CacheModeBenchmark.php",
+        "benchmark:cold-compilation": "@php -d xdebug.mode=off benchmarks/ColdCompilationBenchmark.php",
+        "benchmark:cold-compilation:docker": "docker run --rm --env XDEBUG_MODE=off --volume \"${PWD}:/app\" --workdir /app php82-cli:latest php benchmarks/ColdCompilationBenchmark.php",
+        "benchmark:competitors:install": "@composer install --working-dir=benchmarks/competitors --no-interaction",
+        "benchmark:competitors": "@php -d xdebug.mode=off benchmarks/CompetitorHydrationBenchmark.php",
+        "benchmark:competitors:docker": "docker run --rm --env XDEBUG_MODE=off --volume \"${PWD}:/app\" --workdir /app php82-cli:latest php benchmarks/CompetitorHydrationBenchmark.php",
+        "benchmark:private-property": "@php -d xdebug.mode=off benchmarks/PrivatePropertyWriteBenchmark.php",
+        "benchmark:private-property:docker": "docker run --rm --env XDEBUG_MODE=off --volume \"${PWD}:/app\" --workdir /app php82-cli:latest php benchmarks/PrivatePropertyWriteBenchmark.php",
+        "benchmark:property-counts": "@php -d xdebug.mode=off benchmarks/PrivatePropertyHydrationBenchmark.php",
+        "benchmark:property-counts:docker": "docker run --rm --env XDEBUG_MODE=off --volume \"${PWD}:/app\" --workdir /app php82-cli:latest php benchmarks/PrivatePropertyHydrationBenchmark.php",
+        "benchmark:hydrator-strategy": "@php -d xdebug.mode=off benchmarks/HydratorStrategyBenchmark.php",
+        "benchmark:hydrator-strategy:docker": "docker run --rm --env XDEBUG_MODE=off --volume \"${PWD}:/app\" --workdir /app php82-cli:latest php benchmarks/HydratorStrategyBenchmark.php",
+        "benchmark:object-creation": "@php -d xdebug.mode=off benchmarks/ObjectCreationBenchmark.php",
+        "benchmark:object-creation:docker": "docker run --rm --env XDEBUG_MODE=off --volume \"${PWD}:/app\" --workdir /app php82-cli:latest php benchmarks/ObjectCreationBenchmark.php",
+        "benchmark:writer-factory": "@php -d xdebug.mode=off benchmarks/WriterFactoryBenchmark.php",
+        "benchmark:writer-factory:docker": "docker run --rm --env XDEBUG_MODE=off --volume \"${PWD}:/app\" --workdir /app php82-cli:latest php benchmarks/WriterFactoryBenchmark.php",
+        "benchmark:lazy-writers": "@php -d xdebug.mode=off benchmarks/LazyWriterBenchmark.php",
+        "benchmark:lazy-writers:docker": "docker run --rm --env XDEBUG_MODE=off --volume \"${PWD}:/app\" --workdir /app php82-cli:latest php benchmarks/LazyWriterBenchmark.php",
+        "benchmark:map-value": "@php -d xdebug.mode=off benchmarks/MapValueLookupBenchmark.php",
+        "benchmark:map-value:docker": "docker run --rm --env XDEBUG_MODE=off --volume \"${PWD}:/app\" --workdir /app php82-cli:latest php benchmarks/MapValueLookupBenchmark.php",
+        "benchmark:nested": "@php -d xdebug.mode=off benchmarks/NestedHydrationBenchmark.php",
+        "benchmark:nested:docker": "docker run --rm --env XDEBUG_MODE=off --volume \"${PWD}:/app\" --workdir /app php82-cli:latest php benchmarks/NestedHydrationBenchmark.php",
+        "check": [
+            "@phpcs",
+            "@phpstan",
+            "@test"
+        ],
+        "check:docker": [
+            "@phpcs:docker",
+            "@phpstan:docker",
+            "@test:docker"
+        ]
+    },
+    "require": {
+        "php": "^8.2"
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^2.2",
+        "pestphp/pest": "^3.8",
+        "phpro/grumphp": "^2.22",
+        "squizlabs/php_codesniffer": "^3.13",
+        "fakerphp/faker": "^1.24"
+    },
+    "autoload": {
+        "psr-4": {
+            "MakerMill\\HydraType\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "MakerMill\\HydraType\\Tests\\": "tests/",
+            "MakerMill\\HydraType\\Benchmarks\\": "benchmarks/"
+        }
+    },
+    "config": {
+        "platform": {
+            "php": "8.2.0"
+        },
+        "allow-plugins": {
+            "pestphp/pest-plugin": true,
+            "phpro/grumphp": true
+        }
+    }
+}

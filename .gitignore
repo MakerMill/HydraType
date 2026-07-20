@@ -1,0 +1,14 @@
+.idea/
+.vscode/
+/cached
+/hydrators
+/coverage/
+/vendor/
+/benchmarks/competitors/vendor/
+/logs/*
+/.vagrant/
+.DS_Store
+.start-docker.sh
+.php-cs-fixer.cache
+.phpunit.result.cache
+create-docker-container.sh

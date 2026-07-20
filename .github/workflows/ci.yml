@@ -1,0 +1,118 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.5']
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          tools: composer:v2
+
+      - name: Validate Composer configuration
+        run: composer validate --strict
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Run checks
+        run: composer check
+
+  lowest-dependencies:
+    name: Lowest dependencies
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+          tools: composer:v2
+
+      - name: Install lowest supported dependencies
+        run: composer update --prefer-lowest --prefer-stable --no-interaction --no-progress
+
+      - name: Run checks
+        run: composer check
+
+  package:
+    name: Packaged consumer
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+          tools: composer:v2
+
+      - name: Seed ignored development artifacts
+        run: |
+          mkdir -p .idea hydrators vendor
+          touch .idea/package-sentinel
+          touch hydrators/package-sentinel
+          touch vendor/package-sentinel
+          touch .php-cs-fixer.cache
+          touch create-docker-container.sh
+
+      - name: Build Composer archive
+        run: |
+          composer archive --format=zip --dir=/tmp/hydratype-package
+          mkdir /tmp/hydratype-package/source
+          unzip -q /tmp/hydratype-package/*.zip -d /tmp/hydratype-package/source
+          test ! -e /tmp/hydratype-package/source/.editorconfig
+          test ! -e /tmp/hydratype-package/source/.github
+          test ! -e /tmp/hydratype-package/source/.idea
+          test ! -e /tmp/hydratype-package/source/.php-cs-fixer.cache
+          test ! -e /tmp/hydratype-package/source/tests
+          test ! -e /tmp/hydratype-package/source/benchmarks
+          test ! -e /tmp/hydratype-package/source/composer.lock
+          test ! -e /tmp/hydratype-package/source/create-docker-container.sh
+          test ! -e /tmp/hydratype-package/source/hydrators
+          test ! -e /tmp/hydratype-package/source/vendor
+          test -e /tmp/hydratype-package/source/LICENSE
+          test -e /tmp/hydratype-package/source/README.md
+          test -e /tmp/hydratype-package/source/composer.json
+          test -e /tmp/hydratype-package/source/docs/cache.md
+          test -e /tmp/hydratype-package/source/src/HydraType.php
+
+      - name: Install archive as a consumer
+        working-directory: /tmp
+        run: |
+          mkdir hydratype-consumer
+          cd hydratype-consumer
+          composer init --name=makermill/hydratype-consumer --no-interaction
+          composer config minimum-stability dev
+          composer config repositories.hydratype path /tmp/hydratype-package/source
+          composer require 'makermill/hydratype:@dev' --no-interaction --no-progress
+
+      - name: Run consumer smoke test
+        working-directory: /tmp/hydratype-consumer
+        run: php "$GITHUB_WORKSPACE/tests/Consumer/package-smoke.php"
