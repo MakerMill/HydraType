@@ -47,9 +47,10 @@ protect the fast path.
 ## Install
 
 ```shell
-composer require makermill/hydratype
+composer require makermill/hydratype:^1.0@beta
 ```
 
+The beta stability flag is required until HydraType has a stable release.
 HydraType requires PHP 8.2 or newer.
 
 ## Quick start
