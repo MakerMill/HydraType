@@ -25,7 +25,7 @@ require __DIR__ . '/../vendor/autoload.php';
 $competitorAutoloader = __DIR__ . '/competitors/vendor/autoload.php';
 if (!is_file($competitorAutoloader)) {
     throw new RuntimeException(
-        'GeneratedHydrator is not installed. Run composer benchmark:competitors:install first.',
+        'Competitor dependencies are not installed. Run composer benchmark:competitors:install first.',
     );
 }
 
@@ -97,6 +97,78 @@ function printResults(array $results): void
             $result['median'] / $fastest,
         );
     }
+}
+
+/**
+ * AutoMapper 10 requires PHP Parser 5 while GeneratedHydrator requires PHP Parser 4.
+ * We run it in an isolated process so both competitors use their supported dependency.
+ *
+ * @return null|array{median: float, minimum: float, maximum: float}
+ */
+function benchmarkJoliCodeAutoMapper(int $operations, int $samples): ?array
+{
+    if (PHP_VERSION_ID < 80400) {
+        return null;
+    }
+
+    $autoloadFile = __DIR__ . '/competitors/automapper/vendor/autoload.php';
+    if (!is_file($autoloadFile)) {
+        throw new RuntimeException(
+            'JoliCode AutoMapper is not installed. Run composer benchmark:competitors:install first.',
+        );
+    }
+
+    $command = [
+        PHP_BINARY,
+        '-d',
+        'xdebug.mode=off',
+        __DIR__ . '/JoliCodeAutoMapperBenchmark.php',
+        (string) $operations,
+        (string) $samples,
+    ];
+    $pipes = [];
+    $process = proc_open(
+        $command,
+        [
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ],
+        $pipes,
+    );
+    if (!is_resource($process)) {
+        throw new RuntimeException('Unable to start the JoliCode AutoMapper benchmark worker.');
+    }
+
+    fclose($pipes[0]);
+    $output = stream_get_contents($pipes[1]);
+    fclose($pipes[1]);
+    $errorOutput = stream_get_contents($pipes[2]);
+    fclose($pipes[2]);
+    $exitCode = proc_close($process);
+
+    if ($exitCode !== 0) {
+        throw new RuntimeException(
+            "JoliCode AutoMapper benchmark failed with exit code {$exitCode}: {$errorOutput}",
+        );
+    }
+
+    $result = json_decode($output, true, flags: JSON_THROW_ON_ERROR);
+    if (
+        !is_array($result)
+        || !isset($result['median'], $result['minimum'], $result['maximum'])
+        || !is_numeric($result['median'])
+        || !is_numeric($result['minimum'])
+        || !is_numeric($result['maximum'])
+    ) {
+        throw new RuntimeException('JoliCode AutoMapper benchmark returned an invalid result.');
+    }
+
+    return [
+        'median' => (float) $result['median'],
+        'minimum' => (float) $result['minimum'],
+        'maximum' => (float) $result['maximum'],
+    ];
 }
 
 $data = [
@@ -219,4 +291,13 @@ printf("Hydration competitor benchmark (PHP %s)\n", PHP_VERSION);
 printf("%d operations per sample, %d samples, %d warm-up operations\n", $operations, $samples, $warmupOperations);
 printf("Correctly typed camelCase input; object creation included; setup and code generation excluded.\n\n");
 
-printResults(benchmarkCases($cases, $expectedChecksum, $operations, $warmupOperations, $samples));
+$results = benchmarkCases($cases, $expectedChecksum, $operations, $warmupOperations, $samples);
+$joliCodeResult = benchmarkJoliCodeAutoMapper($operations, $samples);
+if ($joliCodeResult === null) {
+    printf("JoliCode AutoMapper 10 excluded: it requires PHP 8.4 or newer.\n\n");
+} else {
+    $results['JoliCode AutoMapper 10'] = $joliCodeResult;
+    uasort($results, static fn (array $left, array $right): int => $left['median'] <=> $right['median']);
+}
+
+printResults($results);

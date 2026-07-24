@@ -41,7 +41,10 @@
         "benchmark:cache-modes:docker": "docker run --rm --env XDEBUG_MODE=off --volume \"${PWD}:/app\" --workdir /app php82-cli:latest php benchmarks/CacheModeBenchmark.php",
         "benchmark:cold-compilation": "@php -d xdebug.mode=off benchmarks/ColdCompilationBenchmark.php",
         "benchmark:cold-compilation:docker": "docker run --rm --env XDEBUG_MODE=off --volume \"${PWD}:/app\" --workdir /app php82-cli:latest php benchmarks/ColdCompilationBenchmark.php",
-        "benchmark:competitors:install": "@composer install --working-dir=benchmarks/competitors --no-interaction",
+        "benchmark:competitors:install": [
+            "@composer install --working-dir=benchmarks/competitors --no-interaction",
+            "@composer install --working-dir=benchmarks/competitors/automapper --no-interaction"
+        ],
         "benchmark:competitors": "@php -d xdebug.mode=off benchmarks/CompetitorHydrationBenchmark.php",
         "benchmark:competitors:docker": "docker run --rm --env XDEBUG_MODE=off --volume \"${PWD}:/app\" --workdir /app php82-cli:latest php benchmarks/CompetitorHydrationBenchmark.php",
         "benchmark:private-property": "@php -d xdebug.mode=off benchmarks/PrivatePropertyWriteBenchmark.php",

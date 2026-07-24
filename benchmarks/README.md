@@ -20,20 +20,28 @@ properties. Dependency setup, metadata preparation, code generation, and warm-up
 were excluded. The values below are median nanoseconds per object over nine
 samples of 20,000 objects.
 
+JoliCode AutoMapper 10 requires PHP 8.4 or newer, so it is excluded from the PHP
+8.2 run. Its PHP Parser 5 dependency conflicts with GeneratedHydrator's PHP Parser
+4 dependency; an isolated worker measures its resolved generated mapper with the
+same operation count, warm-up, sampling, and verification while keeping mapper
+resolution and process startup outside the timed region.
+
 | Hydrator                   |     PHP 8.2 | Relative |     PHP 8.5 | Relative |
 |----------------------------|------------:|---------:|------------:|---------:|
-| HydraType                  |    265.8 ns |    1.00x |    264.2 ns |    1.00x |
-| Ocramius GeneratedHydrator |    308.3 ns |    1.16x |    321.2 ns |    1.22x |
-| EventSauce generated       |    337.6 ns |    1.27x |    369.6 ns |    1.40x |
-| Patchlevel Hydrator        |    785.5 ns |    2.96x |    913.8 ns |    3.46x |
-| Laminas ReflectionHydrator |  1,223.3 ns |    4.60x |  1,242.8 ns |    4.70x |
-| Symfony PropertyNormalizer |  8,484.4 ns |   31.92x |  9,770.9 ns |   36.99x |
-| Sunrise Hydrator           |  9,596.5 ns |   36.10x |  9,440.1 ns |   35.73x |
-| Valinor                    | 10,855.9 ns |   40.84x | 13,237.9 ns |   50.11x |
+| HydraType                  |    267.9 ns |    1.00x |    265.4 ns |    1.00x |
+| Ocramius GeneratedHydrator |    307.9 ns |    1.15x |    322.5 ns |    1.22x |
+| EventSauce generated       |    338.4 ns |    1.26x |    371.3 ns |    1.40x |
+| JoliCode AutoMapper 10     |           — |        — |    524.0 ns |    1.97x |
+| Patchlevel Hydrator        |    793.8 ns |    2.96x |    909.6 ns |    3.43x |
+| Laminas ReflectionHydrator |  1,230.4 ns |    4.59x |  1,252.9 ns |    4.72x |
+| Sunrise Hydrator           |  9,662.5 ns |   36.07x |  9,534.8 ns |   35.93x |
+| Symfony PropertyNormalizer |  8,499.0 ns |   31.72x |  9,783.9 ns |   36.87x |
+| Valinor                    | 10,755.2 ns |   40.15x | 13,197.0 ns |   49.73x |
 
 HydraType was the fastest implementation in both recorded environments. The
-closest competitor, Ocramius GeneratedHydrator, took 1.16 times as long on PHP
-8.2 and 1.22 times as long on PHP 8.5.
+closest competitor, Ocramius GeneratedHydrator, took 1.15 times as long on PHP
+8.2 and 1.22 times as long on PHP 8.5. JoliCode AutoMapper 10 took 1.97 times as
+long as HydraType for the PHP 8.5 array-to-object case.
 
 ## Individual private-property writes
 

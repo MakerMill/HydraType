@@ -3,6 +3,7 @@
     <description>The PSR-12 coding standard.</description>
     <arg name="tab-width" value="4"/>
     <exclude-pattern>*/benchmarks/competitors/vendor/*</exclude-pattern>
+    <exclude-pattern>*/benchmarks/competitors/automapper/vendor/*</exclude-pattern>
 
     <!-- 2. General -->
 

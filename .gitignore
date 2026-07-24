@@ -5,6 +5,7 @@
 /coverage/
 /vendor/
 /benchmarks/competitors/vendor/
+/benchmarks/competitors/automapper/vendor/
 /logs/*
 /.vagrant/
 .DS_Store

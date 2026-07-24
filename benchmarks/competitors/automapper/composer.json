@@ -1,0 +1,16 @@
+{
+    "name": "makermill/hydratype-automapper-benchmark",
+    "description": "Isolated JoliCode AutoMapper dependency for HydraType benchmarks.",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": "^8.4",
+        "jolicode/automapper": "^10.2"
+    },
+    "config": {
+        "platform": {
+            "php": "8.4.1"
+        },
+        "sort-packages": true
+    }
+}
