@@ -59,7 +59,7 @@ final readonly class ClassValidator
      */
     public function validateProperty(PropertyAnalyzer $property): void
     {
-        // Constructors are bypassed, so Optional can preserve only an actual property default.
+        // Optional needs either a property default PHP initializes itself or a promoted default the writer can assign.
         if ($property->isOptional() && !$property->hasDefaultValue()) {
             throw HydrationException::forOptionalPropertyWithoutDefault(
                 $this->classAnalyzer->getClassName(),

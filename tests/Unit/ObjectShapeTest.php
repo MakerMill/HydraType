@@ -7,11 +7,13 @@ use MakerMill\HydraType\Tests\Fixtures\ObjectShape\InheritedAccessibleRecord;
 use MakerMill\HydraType\Tests\Fixtures\ObjectShape\InheritedPrivateRecord;
 use MakerMill\HydraType\Tests\Fixtures\ObjectShape\InheritedReadonlyRecord;
 use MakerMill\HydraType\Tests\Fixtures\ObjectShape\OptionalUninitializedRecord;
+use MakerMill\HydraType\Tests\Fixtures\ObjectShape\PromotedOptionalRecord;
 use MakerMill\HydraType\Tests\Fixtures\ObjectShape\PromotedRecord;
 use MakerMill\HydraType\Tests\Fixtures\ObjectShape\ReadonlyPropertyRecord;
 use MakerMill\HydraType\Tests\Fixtures\ObjectShape\ReadonlyRecord;
 use MakerMill\HydraType\Tests\Fixtures\ObjectShape\StaticRecord;
 use MakerMill\HydraType\Tests\Fixtures\ObjectShape\TraitRecord;
+use MakerMill\HydraType\Tests\Fixtures\ObjectShape\UnsupportedPromotedDefaultRecord;
 use MakerMill\HydraType\Tests\Fixtures\ObjectShape\VisibilityRecord;
 
 it('hydrates and extracts properties at every visibility', function () {
@@ -40,6 +42,19 @@ it('hydrates promoted properties without invoking the constructor', function () 
 
     expect($record->values())->toBe(['id' => 7, 'name' => 'promoted'])
         ->and(PromotedRecord::constructorCalls())->toBe(0);
+});
+
+it('preserves promoted defaults when optional input is missing', function () {
+    $defaultRecord = hydrateObject(testHydraType(), PromotedOptionalRecord::class, [
+        'name' => 'Ada Lovelace',
+    ]);
+    $providedRecord = hydrateObject(testHydraType(), PromotedOptionalRecord::class, [
+        'name' => 'Ada Lovelace',
+        'id' => '42',
+    ]);
+
+    expect($defaultRecord->values())->toBe(['name' => 'Ada Lovelace', 'id' => 33])
+        ->and($providedRecord->values())->toBe(['name' => 'Ada Lovelace', 'id' => 42]);
 });
 
 it('hydrates and extracts readonly classes', function () {
@@ -105,7 +120,17 @@ it('rejects inherited readonly properties that are not portable across supported
         ->toThrow(HydrationException::class, "Readonly property 'parentId' inherited");
 });
 
-it('rejects optional properties without a property default', function () {
+it('rejects optional properties without a default', function () {
     expect(fn () => testHydraType()->hydrator(OptionalUninitializedRecord::class))
         ->toThrow(HydrationException::class, "Optional property 'name'");
+});
+
+it('rejects promoted object defaults that cannot be reproduced without the constructor', function () {
+    expect(fn () => testHydraType()->hydrator(UnsupportedPromotedDefaultRecord::class))
+        ->toThrow(
+            HydrationException::class,
+            "Optional promoted property 'value' in class '" . UnsupportedPromotedDefaultRecord::class
+            . "' has an unsupported default of type 'stdClass'. HydraType cannot reproduce object defaults because "
+            . 'reflection does not retain the original constructor expression.',
+        );
 });

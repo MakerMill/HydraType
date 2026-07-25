@@ -28,7 +28,7 @@ use ReflectionClass;
  */
 final readonly class HydratorCompiler
 {
-    public const CACHE_VERSION = 1;
+    public const CACHE_VERSION = 2;
 
     /**
      * @var ClassAnalyzer<T>
@@ -426,10 +426,16 @@ final readonly class HydratorCompiler
 
             $propertyLines = $this->compilePropertyAssignment($property, $value);
             if ($property->isOptional()) {
-                // Constructors are bypassed, so omitting the assignment is what preserves a declared property default.
+                // Declared property defaults survive constructor bypass. Promoted defaults do not, so reproduce that
+                // constructor assignment only for the optional property that selected this behavior.
                 $lines[] = 'if (array_key_exists(' . var_export($inputKey, true) . ', $data)) {';
                 foreach ($propertyLines as $propertyLine) {
                     $lines[] = '    ' . $propertyLine;
+                }
+                if ($property->defaultRequiresAssignment()) {
+                    $lines[] = '} else {';
+                    $lines[] = '    $object->' . $propertyName . ' = '
+                        . $this->compileDefaultValue($property->getDefaultValue(), $propertyName) . ';';
                 }
                 $lines[] = '}';
                 continue;
@@ -438,6 +444,34 @@ final readonly class HydratorCompiler
         }
 
         return implode("\n", $lines);
+    }
+
+    private function compileDefaultValue(mixed $value, string $propertyName): string
+    {
+        if (is_string($value)) {
+            return PhpLiteral::string($value);
+        }
+        if ($value === null || is_int($value) || is_float($value) || is_bool($value)) {
+            return var_export($value, true);
+        }
+        if ($value instanceof \UnitEnum) {
+            return '\\' . $value::class . '::' . $value->name;
+        }
+        if (is_array($value)) {
+            $entries = [];
+            foreach ($value as $key => $entry) {
+                $keyExpression = is_string($key) ? PhpLiteral::string($key) : (string) $key;
+                $entries[] = $keyExpression . ' => ' . $this->compileDefaultValue($entry, $propertyName);
+            }
+
+            return '[' . implode(', ', $entries) . ']';
+        }
+
+        throw HydrationException::forUnsupportedPromotedDefault(
+            $this->classDescriptor->getClassName(),
+            $propertyName,
+            get_debug_type($value),
+        );
     }
 
     /**

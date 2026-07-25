@@ -384,7 +384,7 @@ This makes a hydrate-and-extract round trip predictable.
 
 Nullable properties bypass all hydration and extraction mutators when their
 value is `null`. An `Optional` property applies its hydration mutators only when
-the corresponding input key exists; otherwise, its current property default is
+the corresponding input key exists; otherwise, its declared default is
 preserved.
 
 ## Contract boundaries

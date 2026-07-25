@@ -168,7 +168,7 @@ assertions inspect the same temporary value in attribute declaration order. The
 property is assigned only after every condition succeeds.
 
 Nullable input bypasses assertions when its final value is `null`. A missing
-`Optional` value preserves the property default without evaluating its
+`Optional` value preserves its property or promoted parameter default without evaluating its
 assertions. Assertions apply during hydration only; extraction returns existing
 object state without rechecking it.
 

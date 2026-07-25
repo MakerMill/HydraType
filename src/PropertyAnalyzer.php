@@ -28,6 +28,8 @@ final readonly class PropertyAnalyzer
     private bool $allowsNull;
     private bool $optional;
     private bool $hasDefaultValue;
+    private bool $defaultRequiresAssignment;
+    private mixed $defaultValue;
     private bool $readOnly;
     private string $declaringClassName;
     private string $camelCaseName;
@@ -45,7 +47,11 @@ final readonly class PropertyAnalyzer
         $this->typeConstruct = $this->analyzeTypeConstruct($reflectionType);
         $this->type = $this->analyzeType($reflectionType);
         $this->allowsNull = $reflectionType === null || $reflectionType->allowsNull();
-        $this->hasDefaultValue = $property->hasDefaultValue();
+        [
+            $this->hasDefaultValue,
+            $this->defaultRequiresAssignment,
+            $this->defaultValue,
+        ] = $this->analyzeDefaultValue($property);
         $this->readOnly = $property->isReadOnly();
         $this->attributes = $property->getAttributes();
         $this->optional = $this->hasAttribute(Optional::class);
@@ -141,6 +147,16 @@ final readonly class PropertyAnalyzer
         return $this->hasDefaultValue;
     }
 
+    public function defaultRequiresAssignment(): bool
+    {
+        return $this->defaultRequiresAssignment;
+    }
+
+    public function getDefaultValue(): mixed
+    {
+        return $this->defaultValue;
+    }
+
     public function isReadOnly(): bool
     {
         return $this->readOnly;
@@ -196,5 +212,39 @@ final readonly class PropertyAnalyzer
         $snakeCase = preg_replace('/(?<!^)[A-Z]/', '_$0', $value);
 
         return strtolower($snakeCase ?? $value);
+    }
+
+    /** @return array{bool, bool, mixed} */
+    private function analyzeDefaultValue(ReflectionProperty $property): array
+    {
+        if ($property->hasDefaultValue()) {
+            // PHP initializes a declared property default even when Reflection bypasses the constructor.
+            return [true, false, null];
+        }
+
+        if (!$property->isPromoted()) {
+            return [false, false, null];
+        }
+
+        $constructor = $property->getDeclaringClass()->getConstructor();
+        if ($constructor === null) {
+            return [false, false, null];
+        }
+
+        foreach ($constructor->getParameters() as $parameter) {
+            if ($parameter->getName() !== $property->getName()) {
+                continue;
+            }
+
+            if (!$parameter->isDefaultValueAvailable()) {
+                return [false, false, null];
+            }
+
+            // Promoted defaults are constructor assignments. Since hydration deliberately bypasses that constructor,
+            // the generated writer must reproduce the assignment when the optional input key is absent.
+            return [true, true, $parameter->getDefaultValue()];
+        }
+
+        return [false, false, null];
     }
 }

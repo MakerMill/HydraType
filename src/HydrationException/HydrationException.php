@@ -180,6 +180,19 @@ class HydrationException extends RuntimeException
         );
     }
 
+    public static function forUnsupportedPromotedDefault(
+        string $className,
+        string $propertyName,
+        string $defaultType,
+    ): self {
+        return new self(
+            "Hydration failed: Optional promoted property '{$propertyName}' in class '{$className}' has an unsupported "
+            . "default of type '{$defaultType}'. HydraType cannot reproduce object defaults because reflection does "
+            . 'not retain the original constructor expression. Use a scalar, array, null, or enum-case default, or '
+            . 'make the property required.',
+        );
+    }
+
     public static function forHydrationError(string $className, ReflectionException|TypeError $previous): self
     {
         return new self(

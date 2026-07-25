@@ -139,7 +139,7 @@ final class Event
 
 - Mutators transform incoming values and may also transform extracted values.
 - Assertions are compiled fail-fast guards, not a general validation system.
-- `Optional` preserves a declared property default when the input key is absent.
+- `Optional` preserves a declared property or promoted parameter default when the input key is absent.
 - Backed enums and concrete nested objects work without attributes.
 
 See [mutators](docs/mutators.md), [assertions](docs/assertions.md), and

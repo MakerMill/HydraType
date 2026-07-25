@@ -81,7 +81,7 @@ type.
 A nullable property accepts an explicit `null`. A missing nullable key also
 becomes `null`.
 
-Use `Optional` when a missing key should preserve an existing property default:
+Use `Optional` when a missing key should preserve an existing default:
 
 ```php
 use MakerMill\HydraType\Rules\Optional;
@@ -93,9 +93,11 @@ final class Preferences
 }
 ```
 
-The default must be declared on the property itself. A default on a promoted
-constructor parameter is only applied when that constructor runs, and HydraType
-does not call target constructors.
+Defaults declared directly on properties and promoted constructor parameters
+are supported. HydraType reproduces a promoted default in generated code because
+the target constructor itself is not called. Scalar, array, `null`, and enum-case
+promoted defaults can be compiled. Object defaults created with `new` are
+rejected because reflection does not retain their constructor expression.
 
 ## Object construction
 
