@@ -26,6 +26,11 @@ JoliCode AutoMapper 10 requires PHP 8.4 or newer, so it is excluded from the PHP
 same operation count, warm-up, sampling, and verification while keeping mapper
 resolution and process startup outside the timed region.
 
+Crell Serde was measured through `SerdeCommon` using its `array` deserialization
+format. One instance was reused and its in-memory analyzer was warmed before
+measurement, so the result excludes metadata preparation while retaining the
+public deserialization pipeline.
+
 | Hydrator                   |     PHP 8.2 | Relative |     PHP 8.5 | Relative |
 |----------------------------|------------:|---------:|------------:|---------:|
 | HydraType                  |    267.9 ns |    1.00x |    265.4 ns |    1.00x |
@@ -34,6 +39,7 @@ resolution and process startup outside the timed region.
 | JoliCode AutoMapper 10     |           — |        — |    524.0 ns |    1.97x |
 | Patchlevel Hydrator        |    793.8 ns |    2.96x |    909.6 ns |    3.43x |
 | Laminas ReflectionHydrator |  1,230.4 ns |    4.59x |  1,252.9 ns |    4.72x |
+| Crell Serde (array)        |  8,118.3 ns |   30.30x |  9,471.1 ns |   35.69x |
 | Sunrise Hydrator           |  9,662.5 ns |   36.07x |  9,534.8 ns |   35.93x |
 | Symfony PropertyNormalizer |  8,499.0 ns |   31.72x |  9,783.9 ns |   36.87x |
 | Valinor                    | 10,755.2 ns |   40.15x | 13,197.0 ns |   49.73x |

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 // phpcs:disable PSR1.Files.SideEffects -- This file is an executable benchmark script.
 
+use Crell\Serde\SerdeCommon;
 use CuyZ\Valinor\MapperBuilder;
 use EventSauce\ObjectHydrator\DefinitionProvider;
 use EventSauce\ObjectHydrator\KeyFormatterWithoutConversion;
@@ -204,6 +205,7 @@ eval(substr($eventSauceCode, 5));
 $eventSauce = new $eventSauceClass();
 
 $laminas = new ReflectionHydrator();
+$serde = new SerdeCommon();
 $patchlevel = (new StackHydratorBuilder())
     ->useExtension(new CoreExtension())
     ->build();
@@ -241,6 +243,14 @@ $cases = [
         for ($i = 0; $i < $operations; $i++) {
             $object = new CompetitorRecord();
             $laminas->hydrate($data, $object);
+        }
+
+        return $object;
+    },
+    'Crell Serde (array)' => static function (int $operations) use ($serde, $data): CompetitorRecord {
+        for ($i = 0; $i < $operations; $i++) {
+            /** @var CompetitorRecord $object */
+            $object = $serde->deserialize($data, from: 'array', to: CompetitorRecord::class);
         }
 
         return $object;

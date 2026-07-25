@@ -5,6 +5,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "crell/serde": "^1.6",
         "cuyz/valinor": "^2.5",
         "eventsauce/object-hydrator": "^1.8",
         "laminas/laminas-hydrator": "^4.19",
