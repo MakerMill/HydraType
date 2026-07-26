@@ -168,31 +168,11 @@ $configuration = new Configuration(
 );
 ```
 
-Applications do not have to maintain that root-class list by hand.
-[HydraType Tools](https://github.com/makermill/hydratype-tools) scans statically
-visible `hydrate()`, `hydrateMany()`, and `hydrator()` calls and generates a
-deterministic warm-up manifest:
+### Automate the warm-up list
 
-```shell
-composer require --dev makermill/hydratype-tools:^1.0@beta
-vendor/bin/hydratype discover src --output=var/cache/hydratype-classes.php
-```
-
-Run discovery during the build stage, before development dependencies are
-removed with `composer install --no-dev`.
-
-Use the generated roots with the same warm-up API:
-
-```php
-$rootClasses = require __DIR__ . '/../var/cache/hydratype-classes.php';
-
-(new HydratorCache($configuration))->warm(...$rootClasses);
-```
-
-The tool reports dynamic targets it cannot prove statically, while HydraType's
-warm-up follows each discovered root through its complete nested hydration
-graph. See the [HydraType Tools documentation](https://github.com/makermill/hydratype-tools)
-for strict discovery and deployment workflows.
+[HydraType Tools](https://github.com/makermill/hydratype-tools) automates
+maintenance of the warm-up class list. See its documentation for current
+installation and usage.
 
 Then use the same cache in read-only mode at runtime:
 
