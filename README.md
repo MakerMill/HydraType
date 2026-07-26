@@ -168,13 +168,15 @@ $configuration = new Configuration(
 );
 ```
 
-### Automate the warm-up list
+### Keep the warm-up list in sync
 
-[HydraType Tools](https://github.com/makermill/hydratype-tools) automates
-maintenance of the warm-up class list. See its documentation for current
-installation and usage.
+As an application grows, manually maintaining every class passed to `warm()` is
+easy to forget. [HydraType Tools](https://github.com/makermill/hydratype-tools)
+generates this class list from the project source. See its documentation for
+current installation and usage.
 
-Then use the same cache in read-only mode at runtime:
+Whether the class list is maintained manually or generated, use the warmed
+cache in read-only mode at runtime:
 
 ```php
 use MakerMill\HydraType\CacheMode;
