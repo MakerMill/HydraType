@@ -40,9 +40,30 @@ path.
 This is not a generic runtime mapping pipeline with a cache placed in front of
 it. The cache contains the optimized implementation for the target class. The
 generated-code choices are backed by cross-version microbenchmarks and direct
-competitor benchmarks. See the [benchmark conclusions](benchmarks/README.md) for
-the measurements and [architecture](docs/architecture.md) for the rules that
-protect the fast path.
+competitor benchmarks. See the [architecture](docs/architecture.md) for the
+rules that protect the fast path.
+
+## Performance comparison
+
+The maintained competitor benchmark measures warmed hydration of correctly
+typed five-property arrays into new objects with private typed properties. It
+compares this specific hot path, not the complete feature scope of each library.
+
+| Hydrator                   |     PHP 8.2 | Relative |     PHP 8.5 | Relative |
+|----------------------------|------------:|---------:|------------:|---------:|
+| HydraType                  |    266.9 ns |    1.00x |    294.7 ns |    1.00x |
+| Ocramius GeneratedHydrator |    309.6 ns |    1.16x |    353.0 ns |    1.20x |
+| EventSauce generated       |    339.8 ns |    1.27x |    369.2 ns |    1.25x |
+| JoliCode AutoMapper 10     |           — |        — |    485.2 ns |    1.65x |
+| Patchlevel Hydrator        |    789.7 ns |    2.96x |    709.4 ns |    2.41x |
+| Laminas ReflectionHydrator |  1,225.9 ns |    4.59x |  1,069.9 ns |    3.63x |
+| Crell Serde (array)        |  7,955.1 ns |   29.81x |  7,923.5 ns |   26.89x |
+| Symfony PropertyNormalizer |  8,473.8 ns |   31.75x |  8,413.1 ns |   28.55x |
+| Sunrise Hydrator           |  9,650.7 ns |   36.16x |  9,436.6 ns |   32.02x |
+| Valinor                    | 10,808.6 ns |   40.50x | 11,339.5 ns |   38.48x |
+
+HydraType was fastest in both environments. See the
+[benchmark methodology and complete conclusions](benchmarks/README.md).
 
 ## Install
 
