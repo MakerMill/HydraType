@@ -1,10 +1,12 @@
-# Use official PHP 8.2 CLI image
-FROM php:8.2-cli
+ARG PHP_VERSION=8.2
+FROM php:${PHP_VERSION}-cli
+
+ARG XDEBUG_VERSION=3.5.3
 
 ENV PHP_IDE_CONFIG=serverName=php-cli
 
-# Install Xdebug
-RUN pecl install xdebug && docker-php-ext-enable xdebug
+# Pin the extension so PHP-version comparisons use the same runtime components.
+RUN pecl install xdebug-${XDEBUG_VERSION} && docker-php-ext-enable xdebug
 
 # Copy custom php.ini
 COPY ./docker/php.ini /usr/local/etc/php/php.ini

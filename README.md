@@ -260,11 +260,18 @@ composer install
 composer check
 ```
 
-The repository includes a PHP 8.2 Docker environment:
+The repository includes matched PHP 8.2 and PHP 8.5 Docker environments:
 
 ```shell
-docker build -t php82-cli .
+composer docker:build
 composer check:docker
+```
+
+The competitor benchmark can be run against either image:
+
+```shell
+composer benchmark:competitors:docker:php82 -- 20000 9
+composer benchmark:competitors:docker:php85 -- 20000 9
 ```
 
 Individual test, static-analysis, coverage, and benchmark commands are defined

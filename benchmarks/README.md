@@ -3,22 +3,26 @@
 These benchmarks were created to decide how a generated HydraType hydrator should
 write values to private properties.
 
-The recorded runs used:
+Except for the current competitor comparison described below, the recorded runs
+used PHP 8.2.32 in the project Docker image and PHP 8.5.8 on the host. CLI JIT
+was inactive and Xdebug was loaded with its modes disabled.
 
-- PHP 8.2.32 in the project Docker image, with tracing JIT;
-- PHP 8.5.8 on the host, with JIT disabled; and
-- Xdebug loaded with its modes disabled.
-
-The reported values are medians. They are useful for choosing the generated-code
-shape, but absolute timings will vary between machines and PHP configurations.
+Unless a section says otherwise, reported values are medians. They are useful
+for choosing the generated-code shape, but absolute timings will vary between
+machines and PHP configurations.
 
 ## Competitor hydration
 
 The competitor benchmark used correctly typed camelCase data containing five
 fields. Each operation created and fully hydrated a new object with private typed
 properties. Dependency setup, metadata preparation, code generation, and warm-up
-were excluded. The values below are median nanoseconds per object over nine
-samples of 20,000 objects.
+were excluded. Each round used nine samples of 20,000 objects, and the
+PHP 8.2 and PHP 8.5 rounds were alternated.
+
+Both PHP versions ran in images built from the same project Dockerfile on the
+same Docker host. The images used Linux on ARM64, Xdebug 3.5.3 with all modes
+disabled, and explicitly disabled CLI OPcache and JIT. The intended runtime
+difference was PHP 8.2.32 versus PHP 8.5.8.
 
 JoliCode AutoMapper 10 requires PHP 8.4 or newer, so it is excluded from the PHP
 8.2 run. Its PHP Parser 5 dependency conflicts with GeneratedHydrator's PHP Parser
@@ -33,21 +37,19 @@ public deserialization pipeline.
 
 | Hydrator                   |     PHP 8.2 | Relative |     PHP 8.5 | Relative |
 |----------------------------|------------:|---------:|------------:|---------:|
-| HydraType                  |    267.9 ns |    1.00x |    265.4 ns |    1.00x |
-| Ocramius GeneratedHydrator |    307.9 ns |    1.15x |    322.5 ns |    1.22x |
-| EventSauce generated       |    338.4 ns |    1.26x |    371.3 ns |    1.40x |
-| JoliCode AutoMapper 10     |           — |        — |    524.0 ns |    1.97x |
-| Patchlevel Hydrator        |    793.8 ns |    2.96x |    909.6 ns |    3.43x |
-| Laminas ReflectionHydrator |  1,230.4 ns |    4.59x |  1,252.9 ns |    4.72x |
-| Crell Serde (array)        |  8,118.3 ns |   30.30x |  9,471.1 ns |   35.69x |
-| Sunrise Hydrator           |  9,662.5 ns |   36.07x |  9,534.8 ns |   35.93x |
-| Symfony PropertyNormalizer |  8,499.0 ns |   31.72x |  9,783.9 ns |   36.87x |
-| Valinor                    | 10,755.2 ns |   40.15x | 13,197.0 ns |   49.73x |
+| HydraType                  |    266.9 ns |    1.00x |    294.7 ns |    1.00x |
+| Ocramius GeneratedHydrator |    309.6 ns |    1.16x |    353.0 ns |    1.20x |
+| EventSauce generated       |    339.8 ns |    1.27x |    369.2 ns |    1.25x |
+| JoliCode AutoMapper 10     |           — |        — |    485.2 ns |    1.65x |
+| Patchlevel Hydrator        |    789.7 ns |    2.96x |    709.4 ns |    2.41x |
+| Laminas ReflectionHydrator |  1,225.9 ns |    4.59x |  1,069.9 ns |    3.63x |
+| Crell Serde (array)        |  7,955.1 ns |   29.81x |  7,923.5 ns |   26.89x |
+| Symfony PropertyNormalizer |  8,473.8 ns |   31.75x |  8,413.1 ns |   28.55x |
+| Sunrise Hydrator           |  9,650.7 ns |   36.16x |  9,436.6 ns |   32.02x |
+| Valinor                    | 10,808.6 ns |   40.50x | 11,339.5 ns |   38.48x |
 
-HydraType was the fastest implementation in both recorded environments. The
-closest competitor, Ocramius GeneratedHydrator, took 1.15 times as long on PHP
-8.2 and 1.22 times as long on PHP 8.5. JoliCode AutoMapper 10 took 1.97 times as
-long as HydraType for the PHP 8.5 array-to-object case.
+HydraType was fastest in both environments. Ocramius GeneratedHydrator was
+closest at 1.16x on PHP 8.2 and 1.20x on PHP 8.5.
 
 ## Individual private-property writes
 

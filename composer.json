@@ -25,6 +25,12 @@
         }
     ],
     "scripts": {
+        "docker:build": [
+            "@docker:build:php82",
+            "@docker:build:php85"
+        ],
+        "docker:build:php82": "docker build --build-arg PHP_VERSION=8.2 --build-arg XDEBUG_VERSION=3.5.3 --tag php82-cli:latest .",
+        "docker:build:php85": "docker build --build-arg PHP_VERSION=8.5 --build-arg XDEBUG_VERSION=3.5.3 --tag php85-cli:latest .",
         "test": "pest",
         "coverage": "XDEBUG_MODE=coverage pest --coverage --coverage-filter=src",
         "test:docker": "docker run --rm --env XDEBUG_MODE=off --volume \"${PWD}:/app\" --workdir /app php82-cli:latest vendor/bin/pest",
@@ -47,6 +53,8 @@
         ],
         "benchmark:competitors": "@php -d xdebug.mode=off benchmarks/CompetitorHydrationBenchmark.php",
         "benchmark:competitors:docker": "docker run --rm --env XDEBUG_MODE=off --volume \"${PWD}:/app\" --workdir /app php82-cli:latest php benchmarks/CompetitorHydrationBenchmark.php",
+        "benchmark:competitors:docker:php82": "docker run --rm --env XDEBUG_MODE=off --volume \"${PWD}:/app\" --workdir /app php82-cli:latest php benchmarks/CompetitorHydrationBenchmark.php",
+        "benchmark:competitors:docker:php85": "docker run --rm --env XDEBUG_MODE=off --volume \"${PWD}:/app\" --workdir /app php85-cli:latest php benchmarks/CompetitorHydrationBenchmark.php",
         "benchmark:private-property": "@php -d xdebug.mode=off benchmarks/PrivatePropertyWriteBenchmark.php",
         "benchmark:private-property:docker": "docker run --rm --env XDEBUG_MODE=off --volume \"${PWD}:/app\" --workdir /app php82-cli:latest php benchmarks/PrivatePropertyWriteBenchmark.php",
         "benchmark:property-counts": "@php -d xdebug.mode=off benchmarks/PrivatePropertyHydrationBenchmark.php",
