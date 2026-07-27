@@ -13,11 +13,16 @@ use MakerMill\HydraType\Interfaces\HydratorInterface;
  */
 final class HydraType
 {
-    private readonly Configuration $configuration;
+    private readonly HydratorFactory $hydratorFactory;
+    /** @var class-string|null */
+    private ?string $lastClassName = null;
+    /** @var HydratorInterface<object> */
+    private HydratorInterface $lastHydrator;
 
     public function __construct(?Configuration $configuration = null)
     {
-        $this->configuration = $configuration ?? new Configuration();
+        $configuration ??= new Configuration();
+        $this->hydratorFactory = $configuration->getHydratorFactory();
     }
 
     /**
@@ -83,6 +88,18 @@ final class HydraType
      */
     public function hydrator(string $className): HydratorInterface
     {
-        return $this->configuration->getHydratorFactory()->create($className);
+        // Repeated work for one target class stays on the shortest facade path. Class changes still use the factory's
+        // complete in-memory cache, after which that class becomes the next fast-path target.
+        if ($className === $this->lastClassName) {
+            /** @var HydratorInterface<T> $hydrator */
+            $hydrator = $this->lastHydrator;
+            return $hydrator;
+        }
+
+        $hydrator = $this->hydratorFactory->create($className);
+        $this->lastHydrator = $hydrator;
+        $this->lastClassName = $className;
+
+        return $hydrator;
     }
 }

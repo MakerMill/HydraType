@@ -100,6 +100,26 @@ it('reports invalid input through the public interface', function () {
         ->toThrow(HydrationException::class);
 });
 
+it('keeps the most recently resolved hydrator on the facade fast path', function () {
+    $hydra = testHydraType();
+    $reflection = new ReflectionClass($hydra);
+    $lastClassName = $reflection->getProperty('lastClassName');
+    $lastHydrator = $reflection->getProperty('lastHydrator');
+
+    $simpleUserHydrator = $hydra->hydrator(SimpleUser::class);
+
+    expect($lastClassName->getValue($hydra))->toBe(SimpleUser::class)
+        ->and($lastHydrator->getValue($hydra))->toBe($simpleUserHydrator)
+        ->and($hydra->hydrator(SimpleUser::class))->toBe($simpleUserHydrator);
+
+    $typedRecordHydrator = $hydra->hydrator(TypedRecord::class);
+
+    expect($lastClassName->getValue($hydra))->toBe(TypedRecord::class)
+        ->and($lastHydrator->getValue($hydra))->toBe($typedRecordHydrator)
+        ->and($hydra->hydrator(SimpleUser::class))->toBe($simpleUserHydrator)
+        ->and($lastClassName->getValue($hydra))->toBe(SimpleUser::class);
+});
+
 it('preserves the original assignment failure with accurate hydration context', function (bool $batch) {
     $data = [
         'id' => 1,
