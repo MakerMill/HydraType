@@ -6,6 +6,7 @@ use MakerMill\HydraType\Configuration;
 use MakerMill\HydraType\ClassDescriptor;
 use MakerMill\HydraType\HydrationException\HydrationException;
 use MakerMill\HydraType\HydraType;
+use MakerMill\HydraType\Tests\Consumer\InvalidPhpRecord;
 use MakerMill\HydraType\Tests\Fixtures\IntersectionTypedRecord;
 use MakerMill\HydraType\Tests\Fixtures\AbstractRecord;
 use MakerMill\HydraType\Tests\Fixtures\SimpleUser;
@@ -45,4 +46,19 @@ it('reports cache directories that cannot be created', function () {
 
     expect(fn () => (new HydraType($configuration))->hydrator(SimpleUser::class))
         ->toThrow(HydrationException::class, "Unable to create cache directory '" . __FILE__ . "'");
+});
+
+it('normalizes invalid PHP emitted by a consumer extension', function () {
+    $configuration = testConfiguration();
+    $descriptor = new ClassDescriptor(InvalidPhpRecord::class, $configuration);
+
+    try {
+        (new HydraType($configuration))->hydrator(InvalidPhpRecord::class);
+        throw new RuntimeException('Invalid generated PHP unexpectedly compiled.');
+    } catch (HydrationException $exception) {
+        expect($exception->getMessage())
+            ->toContain("Generated hydrator for class '" . InvalidPhpRecord::class . "' contains invalid PHP")
+            ->and($exception->getPrevious())->toBeInstanceOf(ParseError::class)
+            ->and(is_file($descriptor->getHydratorFilePath()))->toBeFalse();
+    }
 });

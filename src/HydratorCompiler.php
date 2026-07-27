@@ -13,6 +13,7 @@ use MakerMill\HydraType\Interfaces\AssertionInterface;
 use MakerMill\HydraType\Interfaces\ExtractionMutatorInterface;
 use MakerMill\HydraType\Interfaces\MutatorInterface;
 use MakerMill\HydraType\Mutators\HydrateAs;
+use ParseError;
 use ReflectionClass;
 
 /**
@@ -130,7 +131,16 @@ final readonly class HydratorCompiler
             $writerSelectionCode,
         );
         // Parse the complete result before HydratorCacheFile atomically publishes it to a cache shared by processes.
-        $tokens = token_get_all($code, TOKEN_PARSE);
+        try {
+            $tokens = token_get_all($code, TOKEN_PARSE);
+        } catch (ParseError $error) {
+            // Consumer extensions emit PHP expressions, so report malformed output through HydraType's exception
+            // boundary while preserving the engine diagnostic for debugging the extension.
+            throw HydrationException::forGeneratedCodeParseError(
+                $this->classDescriptor->getClassName(),
+                $error,
+            );
+        }
         if ($tokens === []) {
             throw HydrationException::forInvalidClass($hydratorName);
         }

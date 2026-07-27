@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace MakerMill\HydraType\HydrationException;
 
+use ParseError;
 use ReflectionException;
 use RuntimeException;
 use TypeError;
@@ -79,6 +80,15 @@ class HydrationException extends RuntimeException
     public static function forInvalidClass(string $className): self
     {
         return new self("Hydration failed: The class '{$className}' could not be found or loaded.");
+    }
+
+    public static function forGeneratedCodeParseError(string $className, ParseError $previous): self
+    {
+        return new self(
+            "Hydration failed: Generated hydrator for class '{$className}' contains invalid PHP: "
+            . $previous->getMessage(),
+            previous: $previous,
+        );
     }
 
     public static function forNonInstantiableClass(string $className): self
