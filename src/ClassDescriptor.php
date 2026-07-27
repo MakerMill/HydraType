@@ -88,4 +88,9 @@ final readonly class ClassDescriptor
 
         return $this->getShortClassName() . 'Hydrator_' . substr($cacheIdentity, 0, 16);
     }
+
+    public function assertHydratorDirectoryIsTrusted(): void
+    {
+        $this->configuration->assertHydratorDirectoryIsTrusted();
+    }
 }

@@ -68,6 +68,7 @@ final class HydratorFactory
     /** @param ClassDescriptor<object> $classDescriptor */
     private function includeHydratorFile(ClassDescriptor $classDescriptor): void
     {
+        $classDescriptor->assertHydratorDirectoryIsTrusted();
         $filePath = $classDescriptor->getHydratorFilePath();
 
         if (is_file($filePath)) {

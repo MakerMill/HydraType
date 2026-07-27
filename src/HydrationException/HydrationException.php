@@ -48,6 +48,19 @@ class HydrationException extends RuntimeException
         return new self("Hydration failed: Unable to create cache directory '{$directory}'.");
     }
 
+    public static function forUntrustedCacheDirectory(string $directory, string $reason): self
+    {
+        return new self("Hydration failed: Refusing untrusted cache directory '{$directory}': {$reason}.");
+    }
+
+    public static function forCacheUserIdentityError(): self
+    {
+        return new self(
+            'Hydration failed: Unable to identify the current operating-system user for the default cache directory. '
+            . 'Configure hydratorDirectory explicitly.',
+        );
+    }
+
     public static function forCacheFileDeleteError(string $fileName): self
     {
         return new self("Hydration failed: Unable to delete cache file '{$fileName}'.");

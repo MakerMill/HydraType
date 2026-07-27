@@ -64,9 +64,16 @@ inspect or package the artifacts.
 
 ## Configuration and invalidation
 
-By default, HydraType uses a project-specific directory under the system
-temporary directory and the generated namespace
-`MakerMill\HydraType\Generated`. Configure them explicitly for deployed caches:
+By default, HydraType uses a project- and operating-system-user-specific
+directory under the system temporary directory and the generated namespace
+`MakerMill\HydraType\Generated`. Because generated hydrators are executable PHP,
+HydraType rejects a default directory owned by another user, accessible by its
+group or other users, or reached through a symbolic link. The default directory
+is created with owner-only permissions.
+
+Configure the directory explicitly for deployed caches. An explicitly
+configured directory is part of the application's trusted deployment state and
+must not be writable by untrusted users:
 
 ```php
 $configuration = new Configuration(

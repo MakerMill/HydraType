@@ -26,6 +26,7 @@ final readonly class HydratorCacheFile
 
     public function needsCompilation(bool $refreshFileStatus = false): bool
     {
+        $this->classDescriptor->assertHydratorDirectoryIsTrusted();
         $compiledFile = $this->classDescriptor->getHydratorFilePath();
         if ($refreshFileStatus) {
             clearstatcache(true, $compiledFile);
@@ -40,6 +41,7 @@ final readonly class HydratorCacheFile
 
     public function clear(): void
     {
+        $this->classDescriptor->assertHydratorDirectoryIsTrusted();
         $fileName = $this->classDescriptor->getHydratorFilePath();
         $lockFile = $fileName . '.lock';
         if (!is_file($fileName) && !is_file($lockFile)) {
@@ -122,6 +124,7 @@ final readonly class HydratorCacheFile
 
     private function ensureDirectory(string $directory): void
     {
+        $this->classDescriptor->assertHydratorDirectoryIsTrusted();
         if (is_dir($directory)) {
             return;
         }
@@ -143,6 +146,8 @@ final readonly class HydratorCacheFile
         if (!$created && !is_dir($directory)) {
             throw HydrationException::forCacheDirectoryError($directory);
         }
+
+        $this->classDescriptor->assertHydratorDirectoryIsTrusted();
     }
 
     private function writeAtomically(string $fileName, string $code): void

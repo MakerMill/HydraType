@@ -14,6 +14,8 @@ final class Configuration
     private const DEFAULT_HYDRATOR_NAMESPACE = 'MakerMill\\HydraType\\Generated';
 
     private ?HydratorFactory $hydratorFactory = null;
+    private readonly ?DefaultCacheDirectory $defaultCacheDirectory;
+    private bool $defaultCacheDirectoryTrusted = false;
     private readonly string $hydratorNamespace;
     private readonly string $hydratorDirectory;
     private readonly CacheMode $cacheMode;
@@ -24,7 +26,13 @@ final class Configuration
         CacheMode $cacheMode = CacheMode::Auto,
     ) {
         $this->hydratorNamespace = $hydratorNamespace;
-        $this->hydratorDirectory = $hydratorDirectory ?? $this->defaultHydratorDirectory();
+        if ($hydratorDirectory === null) {
+            $this->defaultCacheDirectory = DefaultCacheDirectory::forProject(dirname(__DIR__));
+            $this->hydratorDirectory = $this->defaultCacheDirectory->path();
+        } else {
+            $this->defaultCacheDirectory = null;
+            $this->hydratorDirectory = $hydratorDirectory;
+        }
         $this->cacheMode = $cacheMode;
     }
 
@@ -60,12 +68,13 @@ final class Configuration
         ]));
     }
 
-    private function defaultHydratorDirectory(): string
+    /** @internal */
+    public function assertHydratorDirectoryIsTrusted(): void
     {
-        // Isolate the default cache per installation so unrelated projects cannot load each other's generated code.
-        $projectIdentity = hash('sha256', dirname(__DIR__));
+        if ($this->defaultCacheDirectory === null || $this->defaultCacheDirectoryTrusted) {
+            return;
+        }
 
-        return sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'hydratype' . DIRECTORY_SEPARATOR .
-            substr($projectIdentity, 0, 16);
+        $this->defaultCacheDirectoryTrusted = $this->defaultCacheDirectory->assertTrusted();
     }
 }
