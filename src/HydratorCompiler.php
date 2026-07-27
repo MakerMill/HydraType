@@ -28,7 +28,7 @@ use ReflectionClass;
  */
 final readonly class HydratorCompiler
 {
-    public const CACHE_VERSION = 2;
+    public const CACHE_VERSION = 3;
 
     /**
      * @var ClassAnalyzer<T>
@@ -91,6 +91,8 @@ final readonly class HydratorCompiler
         $fqClassName = $this->classDescriptor->getFQClassName();
         $hasConstructor = $this->classAnalyzer->hasConstructor();
         $hasNestedHydration = $this->nestedHydratorVariables !== [];
+        $usesDirectHydration = !$hasNestedHydration
+            && $this->classAnalyzer->hasOnlyPubliclyWritableProperties();
 
         // Plain construction is faster, but any constructor is bypassed to avoid arguments, side effects, and invariants.
         $objectCreation = $hasConstructor
@@ -118,6 +120,7 @@ final readonly class HydratorCompiler
             $fqClassName,
             $hasConstructor,
             $hasNestedHydration,
+            $usesDirectHydration,
             $objectCreation,
             $caughtExceptions,
             $camelHydrationCode,
@@ -143,6 +146,7 @@ final readonly class HydratorCompiler
         string $fqClassName,
         bool $hasConstructor,
         bool $hasNestedHydration,
+        bool $usesDirectHydration,
         string $objectCreation,
         string $caughtExceptions,
         string $camelHydrationCode,
@@ -193,9 +197,12 @@ final readonly class HydratorCompiler
                 $code->line("private ?HydratorInterface \${$variable} = null;");
             }
         }
-        // Naming-specific closures are created only if requested and reused for every later object on that path.
-        $code->line('private ?Closure $camelWriter = null;');
-        $code->line('private ?Closure $snakeWriter = null;');
+        if (!$usesDirectHydration) {
+            // Non-public state needs one class-scoped writer per selected naming path.
+            $code->line('private ?Closure $camelWriter = null;');
+            $code->line('private ?Closure $snakeWriter = null;');
+        }
+        // Naming-specific readers are created only if requested and reused for every later extraction on that path.
         $code->line('private ?Closure $camelReader = null;');
         $code->line('private ?Closure $snakeReader = null;');
         $code->line();
@@ -216,18 +223,21 @@ final readonly class HydratorCompiler
             $code->line();
         }
 
-        $this->appendWriterMethod($code, 'createCamelWriter', $className, $camelHydrationCode);
-        $this->appendWriterMethod($code, 'createSnakeWriter', $className, $snakeHydrationCode);
+        if (!$usesDirectHydration) {
+            $this->appendWriterMethod($code, 'createCamelWriter', $className, $camelHydrationCode);
+            $this->appendWriterMethod($code, 'createSnakeWriter', $className, $snakeHydrationCode);
+        }
         $this->appendReaderMethod($code, 'createCamelReader', $className, $camelExtractionCode);
         $this->appendReaderMethod($code, 'createSnakeReader', $className, $snakeExtractionCode);
 
-        // Hydration infers the naming convention from a distinguishing input key; extraction receives the convention
-        // explicitly. Both selectors memoize the chosen precompiled closure.
-        $code->line('/** @param array<string, mixed> $data */');
-        $code->open('private function writerFor(array $data): Closure');
-        $code->code($writerSelectionCode);
-        $code->close();
-        $code->line();
+        if (!$usesDirectHydration) {
+            // Hydration infers the naming convention from a distinguishing input key and memoizes its scoped writer.
+            $code->line('/** @param array<string, mixed> $data */');
+            $code->open('private function writerFor(array $data): Closure');
+            $code->code($writerSelectionCode);
+            $code->close();
+            $code->line();
+        }
 
         // Preserve the callable's array result for static analysis after it is selected through the generic Closure
         // properties. Without this generated PHPDoc, invoking the reader is inferred as mixed.
@@ -251,11 +261,22 @@ final readonly class HydratorCompiler
             $code->line("throw HydrationException::forEmptyData({$className}::class);");
             $code->close();
         }
-        $code->line('$writer = $this->writerFor($data);');
+        if (!$usesDirectHydration) {
+            $code->line('$writer = $this->writerFor($data);');
+        }
         $code->openInline('try');
         $code->line("/** @var {$className} \$object */");
         $code->line("\$object = {$objectCreation};");
-        $code->line('$writer($object, $data);');
+        if ($usesDirectHydration) {
+            $this->appendDirectHydrationCode(
+                $code,
+                $camelHydrationCode,
+                $snakeHydrationCode,
+                $this->generateSnakeCaseSelectionExpression('$data'),
+            );
+        } else {
+            $code->line('$writer($object, $data);');
+        }
         $code->line('return $object;');
         $code->close(" catch ({$caughtExceptions} \$e) {");
         $code->indent();
@@ -276,13 +297,22 @@ final readonly class HydratorCompiler
         $code->close();
         $code->line('$firstData = reset($dataSet);');
         // A batch is required to use one naming convention, so selection happens once outside its object loop.
-        $code->line('$writer = $this->writerFor($firstData);');
+        if ($usesDirectHydration && $camelHydrationCode !== $snakeHydrationCode) {
+            $selectionExpression = $this->generateSnakeCaseSelectionExpression('$firstData');
+            $code->line("\$snakeCase = {$selectionExpression};");
+        } elseif (!$usesDirectHydration) {
+            $code->line('$writer = $this->writerFor($firstData);');
+        }
         $code->line('$results = [];');
         $code->openInline('foreach ($dataSet as $data)');
         $code->openInline('try');
         $code->line("/** @var {$className} \$object */");
         $code->line("\$object = {$objectCreation};");
-        $code->line('$writer($object, $data);');
+        if ($usesDirectHydration) {
+            $this->appendDirectHydrationCode($code, $camelHydrationCode, $snakeHydrationCode, '$snakeCase');
+        } else {
+            $code->line('$writer($object, $data);');
+        }
         $code->line('$results[] = $object;');
         $code->close(" catch ({$caughtExceptions} \$e) {");
         $code->indent();
@@ -335,6 +365,27 @@ final readonly class HydratorCompiler
         $code->close();
 
         return $code->build();
+    }
+
+    private function appendDirectHydrationCode(
+        PhpCodeBuilder $code,
+        string $camelHydrationCode,
+        string $snakeHydrationCode,
+        string $selectionExpression,
+    ): void {
+        if ($camelHydrationCode === $snakeHydrationCode) {
+            $code->code($camelHydrationCode);
+            return;
+        }
+
+        // Public writable properties need no class scope. Keep both naming paths in the generated method so assignment
+        // avoids a closure invocation, while the one convention branch replaces the selected writer call.
+        $code->openInline("if ({$selectionExpression})");
+        $code->code($snakeHydrationCode);
+        $code->close(' else {');
+        $code->indent();
+        $code->code($camelHydrationCode);
+        $code->close();
     }
 
     private function appendWriterMethod(
@@ -579,6 +630,40 @@ final readonly class HydratorCompiler
         $lines[] = 'return $this->camelWriter ??= $this->createCamelWriter();';
 
         return implode("\n", $lines);
+    }
+
+    private function generateSnakeCaseSelectionExpression(string $dataExpression): string
+    {
+        // A required non-null property must be present in every supported, consistently named input. Its snake
+        // spelling therefore distinguishes the convention with one lookup and avoids a redundant camel-key check.
+        foreach ($this->classAnalyzer->getProperties() as $property) {
+            $camelKey = $property->getCamelCaseName();
+            $snakeKey = $property->getSnakeCaseName();
+            if (
+                $camelKey !== $snakeKey
+                && !$property->isOptional()
+                && !$property->allowsNull()
+            ) {
+                return 'array_key_exists(' . var_export($snakeKey, true) . ", {$dataExpression})";
+            }
+        }
+
+        // Build the direct-path equivalent of writerFor() in reverse so the outermost condition preserves the original
+        // property order and its camel-before-snake precedence when no always-present discriminator is available.
+        $expression = 'false';
+        foreach (array_reverse($this->classAnalyzer->getProperties()) as $property) {
+            $camelKey = $property->getCamelCaseName();
+            $snakeKey = $property->getSnakeCaseName();
+            if ($camelKey === $snakeKey) {
+                continue;
+            }
+
+            $camelLookup = 'array_key_exists(' . var_export($camelKey, true) . ", {$dataExpression})";
+            $snakeLookup = 'array_key_exists(' . var_export($snakeKey, true) . ", {$dataExpression})";
+            $expression = "{$camelLookup} ? false : ({$snakeLookup} ? true : ({$expression}))";
+        }
+
+        return $expression;
     }
 
     private function assertUnambiguousInputKeys(): void

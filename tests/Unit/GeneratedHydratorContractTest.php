@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 use MakerMill\HydraType\ClassDescriptor;
 use MakerMill\HydraType\NamingConvention;
+use MakerMill\HydraType\PropertyAnalyzer;
 use MakerMill\HydraType\Tests\Fixtures\PlainRecord;
 use MakerMill\HydraType\Tests\Fixtures\PrivateConstructorRecord;
+use MakerMill\HydraType\Tests\Fixtures\ObjectShape\PublicRecord;
 use MakerMill\HydraType\Tests\Support\GeneratedHydratorInspector;
 
 it('keeps the unselected generated property path minimal', function () {
@@ -67,4 +69,61 @@ it('retains cached reflection when a constructor must be bypassed', function () 
         ->toContain('$object = $this->reflectionClass->newInstanceWithoutConstructor();')
         ->and(GeneratedHydratorInspector::methodBody($source, 'hydrateMany'))
         ->toContain('$object = $this->reflectionClass->newInstanceWithoutConstructor();');
+});
+
+it('inlines hydration for classes whose properties are publicly writable', function () {
+    $configuration = testConfiguration();
+    $hydra = new MakerMill\HydraType\HydraType($configuration);
+    $camelRecord = hydrateObject($hydra, PublicRecord::class, [
+        'id' => '1',
+        'displayName' => 123,
+        'active' => 'yes',
+    ]);
+    $snakeRecord = hydrateObject($hydra, PublicRecord::class, [
+        'id' => '2',
+        'display_name' => 'Snake',
+        'active' => false,
+    ]);
+    $batch = hydrateObjects($hydra, PublicRecord::class, [
+        ['id' => '3', 'display_name' => 'First', 'active' => 'true'],
+        ['id' => '4', 'display_name' => 'Second', 'active' => 'false'],
+    ]);
+    $descriptor = new ClassDescriptor(PublicRecord::class, $configuration);
+    $source = readGeneratedFile($descriptor->getHydratorFilePath());
+    $hydrateBody = GeneratedHydratorInspector::methodBody($source, 'hydrate');
+    $hydrateManyBody = GeneratedHydratorInspector::methodBody($source, 'hydrateMany');
+
+    expect($camelRecord->values())->toBe(['id' => 1, 'displayName' => '123', 'active' => true])
+        ->and($snakeRecord->values())->toBe(['id' => 2, 'displayName' => 'Snake', 'active' => false])
+        ->and($batch[0]->values())->toBe(['id' => 3, 'displayName' => 'First', 'active' => true])
+        ->and($batch[1]->values())->toBe(['id' => 4, 'displayName' => 'Second', 'active' => false])
+        ->and($hydrateBody)->toContain('$object->displayName = (string) $data[\'display_name\'];')
+        ->and($hydrateBody)->toContain('$object->displayName = (string) $data[\'displayName\'];')
+        ->and($hydrateBody)->toContain('if (array_key_exists(\'display_name\', $data))')
+        ->and($hydrateBody)->not->toContain('$snakeCase =')
+        ->and($hydrateManyBody)->toContain('$object->displayName = (string) $data[\'display_name\'];')
+        ->and($hydrateManyBody)->toContain('$object->displayName = (string) $data[\'displayName\'];')
+        ->and($hydrateManyBody)->toContain('$snakeCase = array_key_exists(\'display_name\', $firstData);')
+        ->and($source)->not->toContain('private ?Closure $camelWriter')
+        ->and($source)->not->toContain('createCamelWriter')
+        ->and($source)->not->toContain('writerFor')
+        ->and($source)->toContain('createCamelReader');
+});
+
+it('keeps asymmetric restricted setters on the scoped writer path when supported', function () {
+    if (PHP_VERSION_ID < 80400) {
+        expect(method_exists(ReflectionProperty::class, 'isPrivateSet'))->toBeFalse();
+        return;
+    }
+
+    $property = eval(
+        'namespace MakerMill\\HydraType\\Tests\\Fixtures\\ObjectShape; '
+        . 'final class RestrictedWriteRecord { public private(set) int $id = 0; } '
+        . 'return new \\ReflectionProperty(RestrictedWriteRecord::class, "id");'
+    );
+    if (!$property instanceof ReflectionProperty) {
+        throw new RuntimeException('Unable to inspect the asymmetric-visibility fixture.');
+    }
+
+    expect((new PropertyAnalyzer($property))->isPubliclyWritable())->toBeFalse();
 });

@@ -108,6 +108,17 @@ final class ClassAnalyzer
         return true;
     }
 
+    public function hasOnlyPubliclyWritableProperties(): bool
+    {
+        foreach ($this->properties as $property) {
+            if (!$property->isPubliclyWritable()) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public function hasConstructor(): bool
     {
         return $this->reflectionClass->getConstructor() !== null;

@@ -4,16 +4,13 @@ declare(strict_types=1);
 
 namespace MakerMill\HydraType\Benchmarks\Fixtures;
 
-final class CompetitorRecord implements CompetitorRecordInterface
+final class PublicCompetitorRecord implements CompetitorRecordInterface
 {
-    public function __construct(
-        private int $id = 0,
-        private string $userName = '',
-        private string $email = '',
-        private string $city = '',
-        private bool $active = false,
-    ) {
-    }
+    public int $id = 0;
+    public string $userName = '';
+    public string $email = '';
+    public string $city = '';
+    public bool $active = false;
 
     public function checksum(): int
     {

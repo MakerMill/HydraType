@@ -14,10 +14,11 @@ machines and PHP configurations.
 ## Competitor hydration
 
 The competitor benchmark used correctly typed camelCase data containing five
-fields. Each operation created and fully hydrated a new object with private typed
-properties. Dependency setup, metadata preparation, code generation, and warm-up
-were excluded. Each round used nine samples of 20,000 objects, and the
-PHP 8.2 and PHP 8.5 rounds were alternated.
+fields. It measured both private promoted properties and ordinary public typed
+properties without a constructor. Each operation created and fully hydrated a
+new object. Dependency setup, metadata preparation, code generation, and warm-up
+were excluded. Each round used nine samples of 20,000 objects, and the PHP 8.2
+and PHP 8.5 rounds were alternated.
 
 Both PHP versions ran in images built from the same project Dockerfile on the
 same Docker host. The images used Linux on ARM64, Xdebug 3.5.3 with all modes
@@ -35,6 +36,17 @@ format. One instance was reused and its in-memory analyzer was warmed before
 measurement, so the result excludes metadata preparation while retaining the
 public deserialization pipeline.
 
+Each competitor used its resolved supported entry point and its dedicated
+public-property path where one exists. In particular, Laminas used
+`ObjectPropertyHydrator` instead of `ReflectionHydrator`, and Symfony's
+`PropertyNormalizer` was limited to public visibility. Supported existing-object
+alternatives were also measured for Patchlevel, Sunrise, Symfony, and JoliCode;
+none was faster than the selected call. EventSauce is omitted from the
+public-property result because its hydration model maps constructor parameters
+rather than ordinary public properties.
+
+### Private properties
+
 | Hydrator                   |     PHP 8.2 | Relative |     PHP 8.5 | Relative |
 |----------------------------|------------:|---------:|------------:|---------:|
 | HydraType                  |    266.9 ns |    1.00x |    294.7 ns |    1.00x |
@@ -48,8 +60,28 @@ public deserialization pipeline.
 | Sunrise Hydrator           |  9,650.7 ns |   36.16x |  9,436.6 ns |   32.02x |
 | Valinor                    | 10,808.6 ns |   40.50x | 11,339.5 ns |   38.48x |
 
-HydraType was fastest in both environments. Ocramius GeneratedHydrator was
-closest at 1.16x on PHP 8.2 and 1.20x on PHP 8.5.
+HydraType was fastest for private properties in both environments. Ocramius
+GeneratedHydrator was closest at 1.16x on PHP 8.2 and 1.20x on PHP 8.5.
+
+### Public properties
+
+The public-property values are averages of three round medians.
+
+| Hydrator                         |     PHP 8.2 | Relative |     PHP 8.5 | Relative |
+|----------------------------------|------------:|---------:|------------:|---------:|
+| HydraType                        |    187.4 ns |    1.00x |    190.4 ns |    1.00x |
+| Ocramius GeneratedHydrator       |    190.7 ns |    1.02x |    209.6 ns |    1.10x |
+| EventSauce generated             |           — |        — |           — |        — |
+| JoliCode AutoMapper 10           |           — |        — |  1,207.2 ns |    6.34x |
+| Patchlevel Hydrator              |    808.5 ns |    4.31x |    718.7 ns |    3.78x |
+| Laminas ObjectPropertyHydrator   |    958.0 ns |    5.11x |    851.8 ns |    4.47x |
+| Symfony PropertyNormalizer       |  8,040.0 ns |   42.90x |  7,624.8 ns |   40.05x |
+| Crell Serde (array)              |  8,088.4 ns |   43.15x |  7,968.8 ns |   41.86x |
+| Sunrise Hydrator                 |  9,132.6 ns |   48.72x |  8,832.3 ns |   46.40x |
+| Valinor                          | 10,367.2 ns |   55.31x | 10,734.7 ns |   56.39x |
+
+HydraType was fastest for public properties in both environments. Ocramius
+GeneratedHydrator was closest at 1.02x on PHP 8.2 and 1.10x on PHP 8.5.
 
 ## Individual private-property writes
 

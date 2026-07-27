@@ -31,6 +31,7 @@ final readonly class PropertyAnalyzer
     private bool $defaultRequiresAssignment;
     private mixed $defaultValue;
     private bool $readOnly;
+    private bool $publiclyWritable;
     private string $declaringClassName;
     private string $camelCaseName;
     private string $snakeCaseName;
@@ -53,6 +54,7 @@ final readonly class PropertyAnalyzer
             $this->defaultValue,
         ] = $this->analyzeDefaultValue($property);
         $this->readOnly = $property->isReadOnly();
+        $this->publiclyWritable = $this->analyzePublicWriteAccess($property);
         $this->attributes = $property->getAttributes();
         $this->optional = $this->hasAttribute(Optional::class);
         $this->camelCaseName = self::toCamelCase($this->name);
@@ -162,6 +164,11 @@ final readonly class PropertyAnalyzer
         return $this->readOnly;
     }
 
+    public function isPubliclyWritable(): bool
+    {
+        return $this->publiclyWritable;
+    }
+
     /** @return class-string */
     public function getDeclaringClassName(): string
     {
@@ -246,5 +253,23 @@ final readonly class PropertyAnalyzer
         }
 
         return [false, false, null];
+    }
+
+    private function analyzePublicWriteAccess(ReflectionProperty $property): bool
+    {
+        if (!$property->isPublic() || $property->isReadOnly()) {
+            return false;
+        }
+
+        // PHP 8.4 added asymmetric property visibility. Keep PHP 8.2 compatibility while ensuring a public getter with
+        // protected(set) or private(set) never selects generated assignment from outside the target class scope.
+        if (
+            !method_exists($property, 'isPrivateSet')
+            || !method_exists($property, 'isProtectedSet')
+        ) {
+            return true;
+        }
+
+        return !$property->isPrivateSet() && !$property->isProtectedSet();
     }
 }

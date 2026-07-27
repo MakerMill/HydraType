@@ -10,8 +10,11 @@ use EventSauce\ObjectHydrator\DefinitionProvider;
 use EventSauce\ObjectHydrator\KeyFormatterWithoutConversion;
 use EventSauce\ObjectHydrator\ObjectMapperCodeGenerator;
 use GeneratedHydrator\Configuration as GeneratedHydratorConfiguration;
+use Laminas\Hydrator\ObjectPropertyHydrator;
 use Laminas\Hydrator\ReflectionHydrator;
 use MakerMill\HydraType\Benchmarks\Fixtures\CompetitorRecord;
+use MakerMill\HydraType\Benchmarks\Fixtures\CompetitorRecordInterface;
+use MakerMill\HydraType\Benchmarks\Fixtures\PublicCompetitorRecord;
 use MakerMill\HydraType\Benchmarks\Support\BenchmarkCase;
 use MakerMill\HydraType\Benchmarks\Support\BenchmarkRunner;
 use MakerMill\HydraType\Benchmarks\Support\Statistics;
@@ -35,12 +38,16 @@ if (!is_file($competitorAutoloader)) {
 require $competitorAutoloader;
 
 /**
- * @param array<string, Closure(int): CompetitorRecord> $cases
+ * @template T of CompetitorRecordInterface
+ *
+ * @param array<string, Closure(int): T> $cases
+ * @param class-string<T>                $recordClass
  *
  * @return array<string, array{median: float, minimum: float, maximum: float}>
  */
 function benchmarkCases(
     array $cases,
+    string $recordClass,
     int $expectedChecksum,
     int $operations,
     int $warmupOperations,
@@ -49,14 +56,14 @@ function benchmarkCases(
     $benchmarkCases = [];
     foreach ($cases as $name => $case) {
         $benchmarkCases[$name] = new BenchmarkCase(
-            static fn (): CompetitorRecord => $case($operations),
+            static fn (): CompetitorRecordInterface => $case($operations),
             $operations,
-            static function (mixed $object) use ($name, $expectedChecksum): void {
-                if (!$object instanceof CompetitorRecord || $object->checksum() !== $expectedChecksum) {
+            static function (mixed $object) use ($name, $recordClass, $expectedChecksum): void {
+                if (!$object instanceof $recordClass || $object->checksum() !== $expectedChecksum) {
                     throw new RuntimeException("{$name} produced an invalid benchmark object.");
                 }
             },
-            static fn (): CompetitorRecord => $case($warmupOperations),
+            static fn (): CompetitorRecordInterface => $case($warmupOperations),
             static function (): void {
                 gc_collect_cycles();
             },
@@ -104,9 +111,11 @@ function printResults(array $results): void
  * AutoMapper 10 requires PHP Parser 5 while GeneratedHydrator requires PHP Parser 4.
  * We run it in an isolated process so both competitors use their supported dependency.
  *
+ * @param class-string<CompetitorRecordInterface> $recordClass
+ *
  * @return null|array{median: float, minimum: float, maximum: float}
  */
-function benchmarkJoliCodeAutoMapper(int $operations, int $samples): ?array
+function benchmarkJoliCodeAutoMapper(int $operations, int $samples, string $recordClass): ?array
 {
     if (PHP_VERSION_ID < 80400) {
         return null;
@@ -126,6 +135,7 @@ function benchmarkJoliCodeAutoMapper(int $operations, int $samples): ?array
         __DIR__ . '/JoliCodeAutoMapperBenchmark.php',
         (string) $operations,
         (string) $samples,
+        $recordClass,
     ];
     $pipes = [];
     $process = proc_open(
@@ -172,6 +182,175 @@ function benchmarkJoliCodeAutoMapper(int $operations, int $samples): ?array
     ];
 }
 
+/**
+ * @template T of CompetitorRecordInterface
+ *
+ * @param class-string<T>     $recordClass
+ * @param array<string, mixed> $data
+ *
+ * @return array<string, Closure(int): T>
+ */
+function createCases(
+    string $recordClass,
+    array $data,
+    string $cacheDirectory,
+    bool $publicProperties,
+): array {
+    $hydraType = (new Configuration(hydratorDirectory: $cacheDirectory))
+        ->getHydratorFactory()
+        ->create($recordClass);
+
+    $generatedHydratorConfiguration = new GeneratedHydratorConfiguration($recordClass);
+    $generatedHydratorConfiguration->setGeneratedClassesTargetDir($cacheDirectory);
+    $generatedHydratorClass = $generatedHydratorConfiguration->createFactory()->getHydratorClass();
+    $generatedHydrator = new $generatedHydratorClass();
+
+    $eventSauceClass = 'MakerMill\\HydraType\\Benchmarks\\Generated\\'
+        . ($publicProperties ? 'EventSaucePublicMapper' : 'EventSaucePrivateMapper');
+    $eventSauceDefinitions = new DefinitionProvider(keyFormatter: new KeyFormatterWithoutConversion());
+    $eventSauceCode = (new ObjectMapperCodeGenerator($eventSauceDefinitions))->dump(
+        [$recordClass],
+        $eventSauceClass,
+    );
+    eval(substr($eventSauceCode, 5));
+    $eventSauce = new $eventSauceClass();
+
+    // Laminas provides a purpose-built direct hydrator for public properties. Its reflection hydrator remains the
+    // corresponding path for the private fixture.
+    $laminas = $publicProperties
+        ? new ObjectPropertyHydrator()
+        : new ReflectionHydrator();
+    $laminasName = $publicProperties
+        ? 'Laminas ObjectPropertyHydrator'
+        : 'Laminas ReflectionHydrator';
+    $serde = new SerdeCommon();
+    $patchlevel = (new StackHydratorBuilder())
+        ->useExtension(new CoreExtension())
+        ->build();
+    $sunrise = new SunriseHydrator();
+    $symfony = new PropertyNormalizer(
+        defaultContext: $publicProperties
+            ? [PropertyNormalizer::NORMALIZE_VISIBILITY => PropertyNormalizer::NORMALIZE_PUBLIC]
+            : [],
+    );
+    $valinor = (new MapperBuilder())->mapper();
+
+    $cases = [
+        'HydraType' => static function (int $operations) use ($hydraType, $data): CompetitorRecordInterface {
+            for ($i = 0; $i < $operations; $i++) {
+                /** @var T $object */
+                $object = $hydraType->hydrate($data);
+            }
+
+            return $object;
+        },
+        'Ocramius GeneratedHydrator' => static function (int $operations) use (
+            $generatedHydrator,
+            $recordClass,
+            $data,
+        ): CompetitorRecordInterface {
+            for ($i = 0; $i < $operations; $i++) {
+                $object = new $recordClass();
+                $generatedHydrator->hydrate($data, $object);
+            }
+
+            return $object;
+        },
+        'EventSauce generated' => static function (int $operations) use (
+            $eventSauce,
+            $recordClass,
+            $data,
+        ): CompetitorRecordInterface {
+            for ($i = 0; $i < $operations; $i++) {
+                /** @var T $object */
+                $object = $eventSauce->hydrateObject($recordClass, $data);
+            }
+
+            return $object;
+        },
+        $laminasName => static function (int $operations) use (
+            $laminas,
+            $recordClass,
+            $data,
+        ): CompetitorRecordInterface {
+            for ($i = 0; $i < $operations; $i++) {
+                $object = new $recordClass();
+                $laminas->hydrate($data, $object);
+            }
+
+            return $object;
+        },
+        'Crell Serde (array)' => static function (int $operations) use (
+            $serde,
+            $recordClass,
+            $data,
+        ): CompetitorRecordInterface {
+            for ($i = 0; $i < $operations; $i++) {
+                /** @var T $object */
+                $object = $serde->deserialize($data, from: 'array', to: $recordClass);
+            }
+
+            return $object;
+        },
+        'Patchlevel Hydrator' => static function (int $operations) use (
+            $patchlevel,
+            $recordClass,
+            $data,
+        ): CompetitorRecordInterface {
+            for ($i = 0; $i < $operations; $i++) {
+                /** @var T $object */
+                $object = $patchlevel->hydrate($recordClass, $data);
+            }
+
+            return $object;
+        },
+        'Sunrise Hydrator' => static function (int $operations) use (
+            $sunrise,
+            $recordClass,
+            $data,
+        ): CompetitorRecordInterface {
+            for ($i = 0; $i < $operations; $i++) {
+                /** @var T $object */
+                $object = $sunrise->hydrate($recordClass, $data);
+            }
+
+            return $object;
+        },
+        'Symfony PropertyNormalizer' => static function (int $operations) use (
+            $symfony,
+            $recordClass,
+            $data,
+        ): CompetitorRecordInterface {
+            for ($i = 0; $i < $operations; $i++) {
+                /** @var T $object */
+                $object = $symfony->denormalize($data, $recordClass);
+            }
+
+            return $object;
+        },
+        'Valinor' => static function (int $operations) use (
+            $valinor,
+            $recordClass,
+            $data,
+        ): CompetitorRecordInterface {
+            for ($i = 0; $i < $operations; $i++) {
+                /** @var T $object */
+                $object = $valinor->map($recordClass, $data);
+            }
+
+            return $object;
+        },
+    ];
+
+    // EventSauce maps constructor parameters. Ordinary public properties without constructor parameters are
+    // outside its hydration model, so including the unchanged object would misrepresent its behavior.
+    if ($publicProperties) {
+        unset($cases['EventSauce generated']);
+    }
+
+    return $cases;
+}
+
 $data = [
     'id' => 42,
     'userName' => 'Ada Lovelace',
@@ -186,109 +365,6 @@ if (!is_dir($cacheDirectory) && !mkdir($cacheDirectory, 0777, true) && !is_dir($
     throw new RuntimeException("Unable to create benchmark cache directory {$cacheDirectory}.");
 }
 
-$hydraType = (new Configuration(hydratorDirectory: $cacheDirectory))
-    ->getHydratorFactory()
-    ->create(CompetitorRecord::class);
-
-$generatedHydratorConfiguration = new GeneratedHydratorConfiguration(CompetitorRecord::class);
-$generatedHydratorConfiguration->setGeneratedClassesTargetDir($cacheDirectory);
-$generatedHydratorClass = $generatedHydratorConfiguration->createFactory()->getHydratorClass();
-$generatedHydrator = new $generatedHydratorClass();
-
-$eventSauceClass = 'MakerMill\\HydraType\\Benchmarks\\Generated\\EventSauceMapper';
-$eventSauceDefinitions = new DefinitionProvider(keyFormatter: new KeyFormatterWithoutConversion());
-$eventSauceCode = (new ObjectMapperCodeGenerator($eventSauceDefinitions))->dump(
-    [CompetitorRecord::class],
-    $eventSauceClass,
-);
-eval(substr($eventSauceCode, 5));
-$eventSauce = new $eventSauceClass();
-
-$laminas = new ReflectionHydrator();
-$serde = new SerdeCommon();
-$patchlevel = (new StackHydratorBuilder())
-    ->useExtension(new CoreExtension())
-    ->build();
-$sunrise = new SunriseHydrator();
-$symfony = new PropertyNormalizer();
-$valinor = (new MapperBuilder())->mapper();
-
-/** @var array<string, Closure(int): CompetitorRecord> $cases */
-$cases = [
-    'HydraType' => static function (int $operations) use ($hydraType, $data): CompetitorRecord {
-        for ($i = 0; $i < $operations; $i++) {
-            /** @var CompetitorRecord $object */
-            $object = $hydraType->hydrate($data);
-        }
-
-        return $object;
-    },
-    'Ocramius GeneratedHydrator' => static function (int $operations) use ($generatedHydrator, $data): CompetitorRecord {
-        for ($i = 0; $i < $operations; $i++) {
-            $object = new CompetitorRecord();
-            $generatedHydrator->hydrate($data, $object);
-        }
-
-        return $object;
-    },
-    'EventSauce generated' => static function (int $operations) use ($eventSauce, $data): CompetitorRecord {
-        for ($i = 0; $i < $operations; $i++) {
-            /** @var CompetitorRecord $object */
-            $object = $eventSauce->hydrateObject(CompetitorRecord::class, $data);
-        }
-
-        return $object;
-    },
-    'Laminas ReflectionHydrator' => static function (int $operations) use ($laminas, $data): CompetitorRecord {
-        for ($i = 0; $i < $operations; $i++) {
-            $object = new CompetitorRecord();
-            $laminas->hydrate($data, $object);
-        }
-
-        return $object;
-    },
-    'Crell Serde (array)' => static function (int $operations) use ($serde, $data): CompetitorRecord {
-        for ($i = 0; $i < $operations; $i++) {
-            /** @var CompetitorRecord $object */
-            $object = $serde->deserialize($data, from: 'array', to: CompetitorRecord::class);
-        }
-
-        return $object;
-    },
-    'Patchlevel Hydrator' => static function (int $operations) use ($patchlevel, $data): CompetitorRecord {
-        for ($i = 0; $i < $operations; $i++) {
-            /** @var CompetitorRecord $object */
-            $object = $patchlevel->hydrate(CompetitorRecord::class, $data);
-        }
-
-        return $object;
-    },
-    'Sunrise Hydrator' => static function (int $operations) use ($sunrise, $data): CompetitorRecord {
-        for ($i = 0; $i < $operations; $i++) {
-            /** @var CompetitorRecord $object */
-            $object = $sunrise->hydrate(CompetitorRecord::class, $data);
-        }
-
-        return $object;
-    },
-    'Symfony PropertyNormalizer' => static function (int $operations) use ($symfony, $data): CompetitorRecord {
-        for ($i = 0; $i < $operations; $i++) {
-            /** @var CompetitorRecord $object */
-            $object = $symfony->denormalize($data, CompetitorRecord::class);
-        }
-
-        return $object;
-    },
-    'Valinor' => static function (int $operations) use ($valinor, $data): CompetitorRecord {
-        for ($i = 0; $i < $operations; $i++) {
-            /** @var CompetitorRecord $object */
-            $object = $valinor->map(CompetitorRecord::class, $data);
-        }
-
-        return $object;
-    },
-];
-
 $operations = (int) ($_SERVER['argv'][1] ?? 20_000);
 $samples = (int) ($_SERVER['argv'][2] ?? 9);
 $warmupOperations = min(2_000, $operations);
@@ -299,15 +375,33 @@ if ($operations < 1 || $samples < 1) {
 
 printf("Hydration competitor benchmark (PHP %s)\n", PHP_VERSION);
 printf("%d operations per sample, %d samples, %d warm-up operations\n", $operations, $samples, $warmupOperations);
-printf("Correctly typed camelCase input; object creation included; setup and code generation excluded.\n\n");
+printf("Correctly typed camelCase input; new object creation included; setup and code generation excluded.\n");
 
-$results = benchmarkCases($cases, $expectedChecksum, $operations, $warmupOperations, $samples);
-$joliCodeResult = benchmarkJoliCodeAutoMapper($operations, $samples);
-if ($joliCodeResult === null) {
-    printf("JoliCode AutoMapper 10 excluded: it requires PHP 8.4 or newer.\n\n");
-} else {
-    $results['JoliCode AutoMapper 10'] = $joliCodeResult;
-    uasort($results, static fn (array $left, array $right): int => $left['median'] <=> $right['median']);
+$scenarios = [
+    'Private properties' => [CompetitorRecord::class, false],
+    'Public properties' => [PublicCompetitorRecord::class, true],
+];
+foreach ($scenarios as $scenario => [$recordClass, $publicProperties]) {
+    printf("\n%s\n", $scenario);
+    if ($publicProperties) {
+        printf("EventSauce generated excluded: it hydrates constructor parameters, not ordinary public properties.\n\n");
+    }
+    $cases = createCases($recordClass, $data, $cacheDirectory, $publicProperties);
+    $results = benchmarkCases(
+        $cases,
+        $recordClass,
+        $expectedChecksum,
+        $operations,
+        $warmupOperations,
+        $samples,
+    );
+    $joliCodeResult = benchmarkJoliCodeAutoMapper($operations, $samples, $recordClass);
+    if ($joliCodeResult === null) {
+        printf("JoliCode AutoMapper 10 excluded: it requires PHP 8.4 or newer.\n\n");
+    } else {
+        $results['JoliCode AutoMapper 10'] = $joliCodeResult;
+        uasort($results, static fn (array $left, array $right): int => $left['median'] <=> $right['median']);
+    }
+
+    printResults($results);
 }
-
-printResults($results);
