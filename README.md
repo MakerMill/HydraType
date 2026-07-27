@@ -46,8 +46,11 @@ rules that protect the fast path.
 ## Performance comparison
 
 The maintained competitor benchmark measures warmed hydration of correctly
-typed five-property arrays into new objects with private typed properties. It
-compares this specific hot path, not the complete feature scope of each library.
+typed five-property arrays into new objects with private promoted properties or
+ordinary public typed properties. It compares these specific hot paths, not the
+complete feature scope of each library.
+
+### Private properties
 
 | Hydrator                   |     PHP 8.2 | Relative |     PHP 8.5 | Relative |
 |----------------------------|------------:|---------:|------------:|---------:|
@@ -62,8 +65,23 @@ compares this specific hot path, not the complete feature scope of each library.
 | Sunrise Hydrator           |  9,650.7 ns |   36.16x |  9,436.6 ns |   32.02x |
 | Valinor                    | 10,808.6 ns |   40.50x | 11,339.5 ns |   38.48x |
 
-HydraType was fastest in both environments. See the
-[benchmark methodology and complete conclusions](benchmarks/README.md).
+### Public properties
+
+| Hydrator                         |     PHP 8.2 | Relative |     PHP 8.5 | Relative |
+|----------------------------------|------------:|---------:|------------:|---------:|
+| HydraType                        |    187.4 ns |    1.00x |    190.4 ns |    1.00x |
+| Ocramius GeneratedHydrator       |    190.7 ns |    1.02x |    209.6 ns |    1.10x |
+| EventSauce generated             |           — |        — |           — |        — |
+| JoliCode AutoMapper 10           |           — |        — |  1,207.2 ns |    6.34x |
+| Patchlevel Hydrator              |    808.5 ns |    4.31x |    718.7 ns |    3.78x |
+| Laminas ObjectPropertyHydrator   |    958.0 ns |    5.11x |    851.8 ns |    4.47x |
+| Symfony PropertyNormalizer       |  8,040.0 ns |   42.90x |  7,624.8 ns |   40.05x |
+| Crell Serde (array)              |  8,088.4 ns |   43.15x |  7,968.8 ns |   41.86x |
+| Sunrise Hydrator                 |  9,132.6 ns |   48.72x |  8,832.3 ns |   46.40x |
+| Valinor                          | 10,367.2 ns |   55.31x | 10,734.7 ns |   56.39x |
+
+HydraType was fastest for both property visibility cases in both environments.
+See the [benchmark methodology and complete conclusions](benchmarks/README.md).
 
 ## Install
 
