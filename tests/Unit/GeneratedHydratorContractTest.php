@@ -19,6 +19,8 @@ it('keeps the unselected generated property path minimal', function () {
     ]);
     $descriptor = new ClassDescriptor(PlainRecord::class, $configuration);
     $source = readGeneratedFile($descriptor->getHydratorFilePath());
+    $extractBody = GeneratedHydratorInspector::methodBody($source, 'extract');
+    $extractManyBody = GeneratedHydratorInspector::methodBody($source, 'extractMany');
 
     expect($record->values())->toBe(['id' => 42, 'displayName' => '123'])
         ->and($hydra->extract($record))->toBe(['id' => 42, 'displayName' => '123'])
@@ -44,6 +46,12 @@ PHP)
         ->toContain('$object = new PlainRecord();')
         ->and(GeneratedHydratorInspector::methodBody($source, 'hydrateMany'))
         ->toContain('$object = new PlainRecord();')
+        ->and($extractBody)
+        ->toContain('return ($this->snakeReader ??= $this->createSnakeReader())($object);')
+        ->and($extractBody)
+        ->toContain('return ($this->camelReader ??= $this->createCamelReader())($object);')
+        ->and($extractBody)->not->toContain('readerFor')
+        ->and($extractManyBody)->toContain('$reader = $this->readerFor($namingConvention);')
         ->and($source)->toContain('/** @implements HydratorInterface<PlainRecord> */')
         ->and($source)->toContain('/** @return Closure(PlainRecord): array<string, mixed> */')
         ->and(str_contains($source, 'ReflectionClass'))->toBeFalse()

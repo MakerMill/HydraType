@@ -203,7 +203,9 @@ final readonly class HydratorCompiler
             $code->line('private ?Closure $snakeWriter = null;');
         }
         // Naming-specific readers are created only if requested and reused for every later extraction on that path.
+        $code->line("/** @var (Closure({$className}): array<string, mixed>)|null */");
         $code->line('private ?Closure $camelReader = null;');
+        $code->line("/** @var (Closure({$className}): array<string, mixed>)|null */");
         $code->line('private ?Closure $snakeReader = null;');
         $code->line();
 
@@ -335,8 +337,11 @@ final readonly class HydratorCompiler
         $code->line('NamingConvention $namingConvention = NamingConvention::CamelCase,');
         $code->outdent();
         $code->open('): array');
-        $code->line('$reader = $this->readerFor($namingConvention);');
-        $code->line('return $reader($object);');
+        // Single extraction cannot amortize readerFor(), so inline its branch while retaining lazy closure creation.
+        $code->openInline('if ($namingConvention === NamingConvention::SnakeCase)');
+        $code->line('return ($this->snakeReader ??= $this->createSnakeReader())($object);');
+        $code->close();
+        $code->line('return ($this->camelReader ??= $this->createCamelReader())($object);');
         $code->close();
         $code->line();
 
@@ -423,6 +428,7 @@ final readonly class HydratorCompiler
         string $body,
     ): void {
         // Readers use the same one-time child resolution and class-scoped access strategy as writers.
+        $code->line("/** @return Closure({$className}): array<string, mixed> */");
         $code->open("private function {$methodName}(): Closure");
         $this->appendNestedHydratorResolutions($code);
         $code->line('return Closure::bind(');

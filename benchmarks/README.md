@@ -309,20 +309,21 @@ nanoseconds per object over nine samples of 100,000 objects.
 |-----|-----------------|----------:|----------:|-----------:|---------:|---------:|
 | 8.2 | `hydrate()`     | 274.12 ns | 453.00 ns |  630.25 ns |    1.65x |    2.30x |
 | 8.2 | `hydrateMany()` | 208.92 ns | 389.63 ns |  567.23 ns |    1.86x |    2.72x |
-| 8.2 | `extract()`     | 185.15 ns | 314.97 ns |  449.34 ns |    1.70x |    2.43x |
-| 8.2 | `extractMany()` | 104.89 ns | 236.79 ns |  366.73 ns |    2.26x |    3.50x |
+| 8.2 | `extract()`     | 158.72 ns | 261.36 ns |  364.51 ns |    1.65x |    2.30x |
+| 8.2 | `extractMany()` | 107.43 ns | 212.90 ns |  320.23 ns |    1.98x |    2.98x |
 | 8.5 | `hydrate()`     | 262.87 ns | 430.55 ns |  631.34 ns |    1.64x |    2.40x |
 | 8.5 | `hydrateMany()` | 190.32 ns | 361.88 ns |  563.60 ns |    1.90x |    2.96x |
-| 8.5 | `extract()`     | 171.18 ns | 290.44 ns |  431.89 ns |    1.70x |    2.52x |
-| 8.5 | `extractMany()` |  94.01 ns | 224.81 ns |  357.54 ns |    2.39x |    3.80x |
+| 8.5 | `extract()`     | 160.34 ns | 267.24 ns |  368.45 ns |    1.67x |    2.30x |
+| 8.5 | `extractMany()` | 105.61 ns | 210.14 ns |  317.62 ns |    1.99x |    3.01x |
 
 Each selected level adds the allocation and compiled reader or writer call for
-one real child object. Batch APIs remove repeated parent reader or writer
-selection, while each child object still requires its own generated hydrator
-call. The cost therefore grows with actual object depth and remains absent from
-the flat generated property path. This confirms the selected composition model:
-resolve each child hydrator once, capture it in the parent closure, and pay only
-for nested objects that are present in the class shape.
+one real child object. Single extraction selects its naming reader inline, while
+batch APIs select the parent reader or writer once. Each child object still
+requires its own generated hydrator call. The cost therefore grows with actual
+object depth and remains absent from the flat generated property path. This
+confirms the selected composition model: resolve each child hydrator once,
+capture it in the parent closure, and pay only for nested objects that are
+present in the class shape.
 
 ## Compiled assertions
 
