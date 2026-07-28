@@ -30,12 +30,12 @@ it('keeps the unselected generated property path minimal', function () {
             'display_name' => '123',
         ])
         ->and(GeneratedHydratorInspector::closureBody($source, 'createCamelWriter'))->toBe(<<<'PHP'
-$object->id = (int) $data['id'];
-$object->displayName = (string) $data['displayName'];
+$object->id = (int) ($data['id'] ?? (array_key_exists('id', $data) ? null : throw HydrationException::forMissingRequiredProperty(\MakerMill\HydraType\Tests\Fixtures\PlainRecord::class, 'id')));
+$object->displayName = (string) ($data['displayName'] ?? (array_key_exists('displayName', $data) ? null : throw HydrationException::forMissingRequiredProperty(\MakerMill\HydraType\Tests\Fixtures\PlainRecord::class, 'displayName')));
 PHP)
         ->and(GeneratedHydratorInspector::closureBody($source, 'createSnakeWriter'))->toBe(<<<'PHP'
-$object->id = (int) $data['id'];
-$object->displayName = (string) $data['display_name'];
+$object->id = (int) ($data['id'] ?? (array_key_exists('id', $data) ? null : throw HydrationException::forMissingRequiredProperty(\MakerMill\HydraType\Tests\Fixtures\PlainRecord::class, 'id')));
+$object->displayName = (string) ($data['display_name'] ?? (array_key_exists('display_name', $data) ? null : throw HydrationException::forMissingRequiredProperty(\MakerMill\HydraType\Tests\Fixtures\PlainRecord::class, 'displayName')));
 PHP)
         ->and(GeneratedHydratorInspector::closureBody($source, 'createCamelReader'))->toBe(<<<'PHP'
 return ['id' => $object->id, 'displayName' => $object->displayName];
@@ -106,12 +106,12 @@ it('inlines hydration for classes whose properties are publicly writable', funct
         ->and($snakeRecord->values())->toBe(['id' => 2, 'displayName' => 'Snake', 'active' => false])
         ->and($batch[0]->values())->toBe(['id' => 3, 'displayName' => 'First', 'active' => true])
         ->and($batch[1]->values())->toBe(['id' => 4, 'displayName' => 'Second', 'active' => false])
-        ->and($hydrateBody)->toContain('$object->displayName = (string) $data[\'display_name\'];')
-        ->and($hydrateBody)->toContain('$object->displayName = (string) $data[\'displayName\'];')
+        ->and($hydrateBody)->toContain('$object->displayName = (string) ($data[\'display_name\'] ??')
+        ->and($hydrateBody)->toContain('$object->displayName = (string) ($data[\'displayName\'] ??')
         ->and($hydrateBody)->toContain('if (array_key_exists(\'display_name\', $data))')
         ->and($hydrateBody)->not->toContain('$snakeCase =')
-        ->and($hydrateManyBody)->toContain('$object->displayName = (string) $data[\'display_name\'];')
-        ->and($hydrateManyBody)->toContain('$object->displayName = (string) $data[\'displayName\'];')
+        ->and($hydrateManyBody)->toContain('$object->displayName = (string) ($data[\'display_name\'] ??')
+        ->and($hydrateManyBody)->toContain('$object->displayName = (string) ($data[\'displayName\'] ??')
         ->and($hydrateManyBody)->toContain('$snakeCase = array_key_exists(\'display_name\', $firstData);')
         ->and($source)->not->toContain('private ?Closure $camelWriter')
         ->and($source)->not->toContain('createCamelWriter')

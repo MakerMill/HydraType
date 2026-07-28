@@ -30,8 +30,8 @@ it('maps configured values before applying normal type conversion', function () 
         'numericLabel' => 'first',
         'identifier' => 42,
     ])->and($writer)
-        ->toContain('match ($hydraMutatorValue = $data[\'enabled\'])')
-        ->toContain('is_int($hydraMutatorValue = $data[\'numericLabel\'])')
+        ->toContain('match ($hydraMutatorValue = ($data[\'enabled\'] ??')
+        ->toContain('is_int($hydraMutatorValue = ($data[\'numericLabel\'] ??')
         ->toContain('[1 => "first", 2 => "second"][$hydraMutatorValue]')
         ->and(substr_count($writer, "\$data['enabled']"))->toBe(1)
         ->and(substr_count($writer, "\$data['numericLabel']"))->toBe(1);

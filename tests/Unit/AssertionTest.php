@@ -32,7 +32,7 @@ it('asserts the transformed and converted value immediately before assignment', 
         'note' => null,
         'label' => 'fallback',
     ])->and($writer)
-        ->toContain("\$hydraAssertionValue = trim((string) \$data['name']")
+        ->toContain("\$hydraAssertionValue = trim((string) (\$data['name'] ??")
         ->toContain("if (!(\$hydraAssertionValue !== '' && \$hydraAssertionValue !== []))")
         ->toContain('$object->name = $hydraAssertionValue;')
         ->toContain("\$hydraAssertionValue === null || (\$hydraAssertionValue !== ''")

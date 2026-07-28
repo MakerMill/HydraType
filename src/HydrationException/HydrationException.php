@@ -101,6 +101,13 @@ class HydrationException extends RuntimeException
         return new self("Hydration failed: Missing type for property '{$propertyName}' in class '{$className}'.");
     }
 
+    public static function forMissingRequiredProperty(string $className, string $propertyName): self
+    {
+        return new self(
+            "Hydration failed: Required property '{$propertyName}' is missing from input for class '{$className}'.",
+        );
+    }
+
     public static function forMissingReadOnlyCache(string $className, string $fileName): self
     {
         return new self(

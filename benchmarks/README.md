@@ -20,6 +20,11 @@ new object. Dependency setup, metadata preparation, code generation, and warm-up
 were excluded. Each round used nine samples of 20,000 objects, and the PHP 8.2
 and PHP 8.5 rounds were alternated.
 
+HydraType's recorded path includes its compiled missing-required-key protection.
+Explicit `null` still enters normal coercion, while an absent required key fails
+without producing a PHP warning or a cast default. Relative values use HydraType
+as the 1.00x baseline.
+
 Both PHP versions ran in images built from the same project Dockerfile on the
 same Docker host. The images used Linux on ARM64, Xdebug 3.5.3 with all modes
 disabled, and explicitly disabled CLI OPcache and JIT. The intended runtime
@@ -49,19 +54,19 @@ rather than ordinary public properties.
 
 | Hydrator                   |     PHP 8.2 | Relative |     PHP 8.5 | Relative |
 |----------------------------|------------:|---------:|------------:|---------:|
-| HydraType                  |    266.9 ns |    1.00x |    294.7 ns |    1.00x |
-| Ocramius GeneratedHydrator |    309.6 ns |    1.16x |    353.0 ns |    1.20x |
-| EventSauce generated       |    339.8 ns |    1.27x |    369.2 ns |    1.25x |
-| JoliCode AutoMapper 10     |           — |        — |    485.2 ns |    1.65x |
-| Patchlevel Hydrator        |    789.7 ns |    2.96x |    709.4 ns |    2.41x |
-| Laminas ReflectionHydrator |  1,225.9 ns |    4.59x |  1,069.9 ns |    3.63x |
-| Crell Serde (array)        |  7,955.1 ns |   29.81x |  7,923.5 ns |   26.89x |
-| Symfony PropertyNormalizer |  8,473.8 ns |   31.75x |  8,413.1 ns |   28.55x |
-| Sunrise Hydrator           |  9,650.7 ns |   36.16x |  9,436.6 ns |   32.02x |
-| Valinor                    | 10,808.6 ns |   40.50x | 11,339.5 ns |   38.48x |
+| HydraType                  |    280.0 ns |    1.00x |    296.7 ns |    1.00x |
+| Ocramius GeneratedHydrator |    309.6 ns |    1.11x |    353.0 ns |    1.19x |
+| EventSauce generated       |    339.8 ns |    1.21x |    369.2 ns |    1.24x |
+| JoliCode AutoMapper 10     |           — |        — |    485.2 ns |    1.64x |
+| Patchlevel Hydrator        |    789.7 ns |    2.82x |    709.4 ns |    2.39x |
+| Laminas ReflectionHydrator |  1,225.9 ns |    4.38x |  1,069.9 ns |    3.61x |
+| Crell Serde (array)        |  7,955.1 ns |   28.41x |  7,923.5 ns |   26.71x |
+| Symfony PropertyNormalizer |  8,473.8 ns |   30.26x |  8,413.1 ns |   28.36x |
+| Sunrise Hydrator           |  9,650.7 ns |   34.47x |  9,436.6 ns |   31.81x |
+| Valinor                    | 10,808.6 ns |   38.60x | 11,339.5 ns |   38.22x |
 
 HydraType was fastest for private properties in both environments. Ocramius
-GeneratedHydrator was closest at 1.16x on PHP 8.2 and 1.20x on PHP 8.5.
+GeneratedHydrator was closest at 1.11x on PHP 8.2 and 1.19x on PHP 8.5.
 
 ### Public properties
 
@@ -69,19 +74,22 @@ The public-property values are averages of three round medians.
 
 | Hydrator                         |     PHP 8.2 | Relative |     PHP 8.5 | Relative |
 |----------------------------------|------------:|---------:|------------:|---------:|
-| HydraType                        |    187.4 ns |    1.00x |    190.4 ns |    1.00x |
-| Ocramius GeneratedHydrator       |    190.7 ns |    1.02x |    209.6 ns |    1.10x |
+| HydraType                        |    193.0 ns |    1.00x |    194.2 ns |    1.00x |
+| Ocramius GeneratedHydrator       |    190.7 ns |    0.99x |    209.6 ns |    1.08x |
 | EventSauce generated             |           — |        — |           — |        — |
-| JoliCode AutoMapper 10           |           — |        — |  1,207.2 ns |    6.34x |
-| Patchlevel Hydrator              |    808.5 ns |    4.31x |    718.7 ns |    3.78x |
-| Laminas ObjectPropertyHydrator   |    958.0 ns |    5.11x |    851.8 ns |    4.47x |
-| Symfony PropertyNormalizer       |  8,040.0 ns |   42.90x |  7,624.8 ns |   40.05x |
-| Crell Serde (array)              |  8,088.4 ns |   43.15x |  7,968.8 ns |   41.86x |
-| Sunrise Hydrator                 |  9,132.6 ns |   48.72x |  8,832.3 ns |   46.40x |
-| Valinor                          | 10,367.2 ns |   55.31x | 10,734.7 ns |   56.39x |
+| JoliCode AutoMapper 10           |           — |        — |  1,207.2 ns |    6.22x |
+| Patchlevel Hydrator              |    808.5 ns |    4.19x |    718.7 ns |    3.70x |
+| Laminas ObjectPropertyHydrator   |    958.0 ns |    4.96x |    851.8 ns |    4.39x |
+| Symfony PropertyNormalizer       |  8,040.0 ns |   41.66x |  7,624.8 ns |   39.26x |
+| Crell Serde (array)              |  8,088.4 ns |   41.91x |  7,968.8 ns |   41.03x |
+| Sunrise Hydrator                 |  9,132.6 ns |   47.32x |  8,832.3 ns |   45.48x |
+| Valinor                          | 10,367.2 ns |   53.72x | 10,734.7 ns |   55.28x |
 
-HydraType was fastest for public properties in both environments. Ocramius
-GeneratedHydrator was closest at 1.02x on PHP 8.2 and 1.10x on PHP 8.5.
+HydraType was fastest for public properties on PHP 8.5. On PHP 8.2, HydraType
+and Ocramius were separated by about 1% and exchanged order between individual
+rounds, which is effectively a tie at this measurement scale. Ocramius directly
+assigns keys that are present and skips missing keys. HydraType additionally
+checks required keys and coerces values to the declared property types.
 
 ## Batch hydration
 
@@ -99,13 +107,36 @@ round medians from the standardized PHP 8.2 and PHP 8.5 Docker environments.
 
 | Method                         |  PHP 8.2 | Relative |  PHP 8.5 | Relative |
 |--------------------------------|---------:|---------:|---------:|---------:|
-| Handwritten PHP                | 168.7 ns |    1.00x | 204.5 ns |    1.00x |
-| HydraType `hydrateMany()`      | 203.0 ns |    1.20x | 232.3 ns |    1.14x |
-| Repeated HydraType `hydrate()` | 323.8 ns |    1.92x | 331.7 ns |    1.62x |
+| Handwritten PHP                | 172.7 ns |    1.00x | 208.6 ns |    1.00x |
+| HydraType `hydrateMany()`      | 211.5 ns |    1.22x | 242.8 ns |    1.16x |
+| Repeated HydraType `hydrate()` | 336.3 ns |    1.95x | 343.6 ns |    1.65x |
 
-`hydrateMany()` was 37.3% faster per object than repeated `hydrate()` calls on
-PHP 8.2 and 30.0% faster on PHP 8.5. Compared with handwritten PHP, it added
-20.4% and 13.6% respectively.
+`hydrateMany()` was 37.1% faster per object than repeated `hydrate()` calls on
+PHP 8.2 and 29.3% faster on PHP 8.5. Compared with handwritten PHP, it added
+22.5% and 16.4% respectively.
+
+## Required-key access
+
+The required-key benchmark compared generated expression shapes while creating
+and assigning the same five-property public object. Every measured input
+contained correctly typed, non-null values. Each result is the median
+nanoseconds per object over 15 samples of 1,000,000 objects.
+
+| Generated input path                 | PHP 8.2 | PHP 8.5 |
+|--------------------------------------|--------:|--------:|
+| Direct unchecked access              | 125.8 ns | 139.3 ns |
+| One null-preserving `??` fallback    | 127.5 ns | 138.3 ns |
+| Five null-preserving `??` fallbacks  | 131.2 ns | 144.0 ns |
+| Five fallbacks plus naming selection | 135.3 ns | 148.4 ns |
+| Five separate `array_key_exists()` guards | 165.7 ns | 191.8 ns |
+| Five `array_key_exists()` ternaries  | 151.7 ns | 165.5 ns |
+
+The selected `??` expression added approximately 5 ns per five-property object,
+or about 1 ns per required property, while preserving explicit `null` through a
+fallback lookup and throwing only for an absent key. The one camel/snake
+selection added another 4.1–4.4 ns. Separate guards added approximately 40–53 ns,
+and guarded ternaries added 26 ns. Required-property safety therefore uses the
+coalescing expression directly in each generated conversion pipeline.
 
 ## Individual private-property writes
 
@@ -331,12 +362,12 @@ nanoseconds per object over nine samples of 100,000 objects.
 
 | PHP | Operation       |      Flat | One level | Two levels | One/flat | Two/flat |
 |-----|-----------------|----------:|----------:|-----------:|---------:|---------:|
-| 8.2 | `hydrate()`     | 274.12 ns | 453.00 ns |  630.25 ns |    1.65x |    2.30x |
-| 8.2 | `hydrateMany()` | 208.92 ns | 389.63 ns |  567.23 ns |    1.86x |    2.72x |
+| 8.2 | `hydrate()`     | 273.52 ns | 452.61 ns |  632.16 ns |    1.65x |    2.31x |
+| 8.2 | `hydrateMany()` | 209.80 ns | 387.70 ns |  563.68 ns |    1.85x |    2.69x |
 | 8.2 | `extract()`     | 158.72 ns | 261.36 ns |  364.51 ns |    1.65x |    2.30x |
 | 8.2 | `extractMany()` | 107.43 ns | 212.90 ns |  320.23 ns |    1.98x |    2.98x |
-| 8.5 | `hydrate()`     | 262.87 ns | 430.55 ns |  631.34 ns |    1.64x |    2.40x |
-| 8.5 | `hydrateMany()` | 190.32 ns | 361.88 ns |  563.60 ns |    1.90x |    2.96x |
+| 8.5 | `hydrate()`     | 295.13 ns | 465.49 ns |  630.15 ns |    1.58x |    2.14x |
+| 8.5 | `hydrateMany()` | 241.05 ns | 411.38 ns |  578.09 ns |    1.71x |    2.40x |
 | 8.5 | `extract()`     | 160.34 ns | 267.24 ns |  368.45 ns |    1.67x |    2.30x |
 | 8.5 | `extractMany()` | 105.61 ns | 210.14 ns |  317.62 ns |    1.99x |    3.01x |
 

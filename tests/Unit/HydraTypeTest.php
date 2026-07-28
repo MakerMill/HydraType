@@ -14,6 +14,7 @@ use MakerMill\HydraType\Tests\Fixtures\JsonDecodedRecord;
 use MakerMill\HydraType\Tests\Fixtures\LeftTrimmedRecord;
 use MakerMill\HydraType\Tests\Fixtures\NullableRecord;
 use MakerMill\HydraType\Tests\Fixtures\OptionalRecord;
+use MakerMill\HydraType\Tests\Fixtures\ObjectShape\PublicRecord;
 use MakerMill\HydraType\Tests\Fixtures\RecordState;
 use MakerMill\HydraType\Tests\Fixtures\SimpleUser;
 use MakerMill\HydraType\Tests\Fixtures\SnakeNamedRecord;
@@ -98,6 +99,54 @@ it('reports invalid input through the public interface', function () {
 
     expect(fn () => $hydra->hydrate(SimpleUser::class, []))
         ->toThrow(HydrationException::class);
+});
+
+it('rejects a missing required property without producing a cast default', function (bool $public, bool $batch) {
+    $className = $public ? PublicRecord::class : SimpleUser::class;
+    $data = $public
+        ? ['id' => 1, 'displayName' => 'Incomplete']
+        : ['id' => 1, 'userName' => 'Incomplete'];
+    $propertyName = $public ? 'active' : 'password';
+    $hydra = testHydraType();
+
+    $operation = $batch
+        ? fn () => $hydra->hydrateMany($className, [$data])
+        : fn () => $hydra->hydrate($className, $data);
+
+    $caught = null;
+    set_error_handler(static function (int $severity, string $message, string $file, int $line): never {
+        throw new ErrorException($message, 0, $severity, $file, $line);
+    });
+    try {
+        $operation();
+    } catch (Throwable $exception) {
+        $caught = $exception;
+    } finally {
+        restore_error_handler();
+    }
+
+    expect($caught)->toBeInstanceOf(HydrationException::class)
+        ->and($caught?->getMessage())
+        ->toContain("Required property '{$propertyName}' is missing from input for class '{$className}'");
+})->with([
+    'private single' => [false, false],
+    'private batch' => [false, true],
+    'public single' => [true, false],
+    'public batch' => [true, true],
+]);
+
+it('does not mistake false-like or explicit null values for missing keys', function () {
+    $record = hydrateObject(testHydraType(), PublicRecord::class, [
+        'id' => 0,
+        'displayName' => null,
+        'active' => false,
+    ]);
+
+    expect($record->values())->toBe([
+        'id' => 0,
+        'displayName' => '',
+        'active' => false,
+    ]);
 });
 
 it('keeps the most recently resolved hydrator on the facade fast path', function () {
@@ -249,7 +298,9 @@ it('compiles explicit mutators before inferred type conversion', function () {
     $generatedCode = readGeneratedFile($descriptor->getHydratorFilePath());
 
     expect($record->getName())->toBe('HydraType   ');
-    expect($generatedCode)->toContain('ltrim((string) $data[\'name\'], " \\t\\n\\r\\x00\\v")');
+    expect($generatedCode)
+        ->toContain('ltrim((string) ($data[\'name\'] ??')
+        ->toContain('forMissingRequiredProperty(');
 });
 
 it('requires an explicit mutator for unsupported property types', function () {
@@ -350,9 +401,10 @@ it('compiles JSON decoding for array, object, flags, and nullable output', funct
         'largeNumber' => ['id' => '9223372036854775808'],
         'optionalSettings' => null,
     ])->and($generatedCode)
-        ->toContain('json_decode((string) $data[\'settings\'], true, 512, \\JSON_THROW_ON_ERROR)')
-        ->toContain('json_decode((string) $data[\'metadata\'], false, 64, \\JSON_THROW_ON_ERROR)')
-        ->toContain('json_decode((string) $data[\'largeNumber\'], true, 512, \\JSON_THROW_ON_ERROR | 2)')
+        ->toContain('json_decode((string) ($data[\'settings\'] ??')
+        ->toContain('json_decode((string) ($data[\'metadata\'] ??')
+        ->toContain('json_decode((string) ($data[\'largeNumber\'] ??')
+        ->toContain('true, 512, \\JSON_THROW_ON_ERROR | 2)')
         ->and(str_contains($generatedCode, '$object->settings = (array)'))->toBeFalse();
 });
 
@@ -385,7 +437,7 @@ it('compiles date-time hydration and extraction', function () {
             'createdAt' => '2026-07-18 14:30:45',
             'publishedAt' => null,
         ])->and($generatedCode)
-        ->toContain('new \\DateTimeImmutable((string) $data[\'createdAt\'])')
+        ->toContain('new \\DateTimeImmutable((string) ($data[\'createdAt\'] ??')
         ->toContain('$object->createdAt->format("Y-m-d H:i:s")')
         ->toContain('isset($object->publishedAt) ? $object->publishedAt->format("Y-m-d\\\\TH:i:sP") : null');
 });

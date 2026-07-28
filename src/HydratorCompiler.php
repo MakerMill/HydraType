@@ -29,7 +29,7 @@ use ReflectionClass;
  */
 final readonly class HydratorCompiler
 {
-    public const CACHE_VERSION = 3;
+    public const CACHE_VERSION = 4;
 
     /**
      * @var ClassAnalyzer<T>
@@ -466,6 +466,7 @@ final readonly class HydratorCompiler
             $inputKey = $snakeCase ? $property->getSnakeCaseName() : $property->getCamelCaseName();
             $input = '$data[' . var_export($inputKey, true) . ']';
             $sourceInput = $input;
+            $input = $this->compileRequiredInput($property, $inputKey, $input);
 
             // Build one expression in pipeline order: selected attributes, inferred nested hydration, then the cheapest
             // built-in conversion required by the declared property type.
@@ -511,6 +512,23 @@ final readonly class HydratorCompiler
         }
 
         return implode("\n", $lines);
+    }
+
+    private function compileRequiredInput(
+        PropertyAnalyzer $property,
+        string $inputKey,
+        string $inputExpression,
+    ): string {
+        if ($property->allowsNull() || $property->isOptional()) {
+            return $inputExpression;
+        }
+
+        // The coalesce path fetches a normal non-null value once. Only explicit null needs the fallback lookup that
+        // distinguishes a present null, which retains normal coercion, from an absent key, which must fail cleanly.
+        return '(' . $inputExpression . ' ?? (array_key_exists(' . var_export($inputKey, true) . ', $data)'
+            . ' ? null : throw HydrationException::forMissingRequiredProperty('
+            . $this->classDescriptor->getFQClassName() . '::class, '
+            . var_export($property->getName(), true) . ')))';
     }
 
     private function compileDefaultValue(mixed $value, string $propertyName): string
@@ -944,10 +962,10 @@ final readonly class HydratorCompiler
         $hydrator = $this->nestedHydratorVariables[$target];
         $targetClass = '\\' . ltrim($target, '\\');
 
-        // Evaluate the input once. Existing domain objects pass through, while array-like input takes the compiled child
-        // path without a factory lookup in this expression.
+        // Evaluate the input once. Existing domain objects pass through, while array input takes the compiled child path
+        // without a factory lookup; the child's array parameter rejects every other shape.
         return "((\$hydraNestedValue = {$inputExpression}) instanceof {$targetClass}"
-            . " ? \$hydraNestedValue : \${$hydrator}->hydrate((array) \$hydraNestedValue))";
+            . " ? \$hydraNestedValue : \${$hydrator}->hydrate(\$hydraNestedValue))";
     }
 
     /** @param class-string $target */

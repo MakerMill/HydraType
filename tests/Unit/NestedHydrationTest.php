@@ -86,6 +86,28 @@ it('passes through values that already have the nested target type', function ()
         ->and($user->secondaryAddress())->toBe($address);
 });
 
+it('rejects values that cannot satisfy the nested hydrator array contract', function (mixed $input) {
+    $exception = null;
+    try {
+        testHydraType()->hydrate(NestedUser::class, [
+            'id' => 1,
+            'primaryAddress' => $input,
+            'secondaryAddress' => null,
+        ]);
+    } catch (HydrationException $caught) {
+        $exception = $caught;
+    }
+
+    expect($exception)->toBeInstanceOf(HydrationException::class)
+        ->and($exception?->getMessage())->toContain("Unable to hydrate class '" . NestedUser::class . "'")
+        ->and($exception?->getPrevious())->toBeInstanceOf(TypeError::class);
+})->with([
+    'string' => ['malformed'],
+    'integer' => [42],
+    'unrelated object' => [new stdClass()],
+    'explicit null' => [null],
+]);
+
 it('hydrates and extracts nested batches with one selected naming path', function () {
     $hydra = testHydraType();
     $users = hydrateObjects($hydra, NestedUser::class, [
@@ -205,7 +227,8 @@ it('resolves one child hydrator outside the generated hot path', function () {
             . '\\MakerMill\\HydraType\\Tests\\Fixtures\\NestedHydration\\Address::class);',
         )
         ->and($writerClosure)->not->toContain('hydratorFactory')
-        ->and($writerClosure)->toContain('$nestedHydrator0->hydrate((array) $hydraNestedValue)');
+        ->and($writerClosure)->toContain('$nestedHydrator0->hydrate($hydraNestedValue)')
+        ->and($writerClosure)->not->toContain('hydrate((array)');
 });
 
 it('warms complete nested graphs and terminates on class cycles', function () {

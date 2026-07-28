@@ -30,8 +30,10 @@ $user = $hydra->hydrate(User::class, [
 
 Each level detects camel-case or snake-case input independently. If an input
 value is already an instance of the target class, it is assigned without
-rehydration. Extraction recursively returns arrays and propagates the selected
-naming convention through the complete graph.
+rehydration. Otherwise, the nested value must be an array. Scalars and unrelated
+objects fail through `HydrationException` instead of being cast into a
+meaningless child input. Extraction recursively returns arrays and propagates
+the selected naming convention through the complete graph.
 
 ## Selecting a concrete class
 

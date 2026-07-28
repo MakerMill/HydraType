@@ -28,7 +28,7 @@ it('compiles repeated string replacements in declaration order', function () {
         'alias' => 'new-value',
     ])->and($writer)
         ->toContain(
-            'str_replace("--", "-", (string) str_replace(" ", "-", (string) trim((string) $data[\'slug\']',
+            'str_replace("--", "-", (string) str_replace(" ", "-", (string) trim((string) ($data[\'slug\'] ??',
         );
 });
 

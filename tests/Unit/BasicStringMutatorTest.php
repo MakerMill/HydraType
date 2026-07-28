@@ -28,10 +28,10 @@ it('compiles basic string normalization into the property assignments', function
         'reference' => 'REF',
         'description' => null,
     ])->and($writer)
-        ->toContain('trim((string) $data[\'name\'], " \\t\\n\\r\\x00\\v")')
-        ->toContain('trim((string) $data[\'path\'], "/")')
-        ->toContain('rtrim((string) $data[\'suffix\'], " \\t\\n\\r\\x00\\v")')
-        ->toContain('rtrim((string) $data[\'reference\'], " .")')
+        ->toContain('trim((string) ($data[\'name\'] ??')
+        ->toContain('trim((string) ($data[\'path\'] ??')
+        ->toContain('rtrim((string) ($data[\'suffix\'] ??')
+        ->toContain('rtrim((string) ($data[\'reference\'] ??')
         ->toContain("\$hydraMutatorValue = (string) trim((string) \$data['description']")
         ->and(substr_count($writer, "trim((string) \$data['description']"))->toBe(1);
 });

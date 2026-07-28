@@ -29,8 +29,9 @@ it('hydrates and extracts JSON values with independent flags', function () {
         'metadata' => '{"id":"9223372036854775808"}',
         'optionalSettings' => null,
     ])->and($writer)
-        ->toContain('json_decode((string) $data[\'settings\'], true, 512, \\JSON_THROW_ON_ERROR)')
-        ->toContain('json_decode((string) $data[\'metadata\'], false, 64, \\JSON_THROW_ON_ERROR | 2)')
+        ->toContain('json_decode((string) ($data[\'settings\'] ??')
+        ->toContain('json_decode((string) ($data[\'metadata\'] ??')
+        ->toContain('false, 64, \\JSON_THROW_ON_ERROR | 2)')
         ->and($reader)
         ->toContain('json_encode($object->settings, \\JSON_THROW_ON_ERROR | 64, 512)')
         ->toContain('json_encode($object->metadata, \\JSON_THROW_ON_ERROR, 64)')

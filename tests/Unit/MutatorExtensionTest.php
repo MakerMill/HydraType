@@ -28,7 +28,7 @@ it('compiles consumer mutators in reversible composition order', function () {
         'note' => null,
         'label' => base64_encode('fallback'),
     ])->and(GeneratedHydratorInspector::closureBody($source, 'createCamelWriter'))
-        ->toContain("strrev((string) base64_decode((string) \$data['secret'], true))")
+        ->toContain("strrev((string) base64_decode((string) (\$data['secret'] ??")
         ->and(GeneratedHydratorInspector::closureBody($source, 'createCamelReader'))
         ->toContain('base64_encode((string) strrev((string) $object->secret))');
 });

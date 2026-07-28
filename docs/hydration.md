@@ -99,6 +99,12 @@ the target constructor itself is not called. Scalar, array, `null`, and enum-cas
 promoted defaults can be compiled. Object defaults created with `new` are
 rejected because reflection does not retain their constructor expression.
 
+A non-nullable property without `Optional` is required. If its input key is
+missing, hydration fails immediately with `HydrationException` instead of
+letting PHP turn an undefined array key into a cast default such as `0` or an
+empty string. Explicit `null` remains distinct from a missing key and follows
+the documented type-conversion rules.
+
 ## Object construction
 
 - A class without a constructor is created directly with `new`.
@@ -121,4 +127,6 @@ input reports matter.
 Invalid target definitions, cache failures, and assignment failures are
 reported through `HydrationException`. Assertion failures use its
 `AssertionException` subclass. Exceptions produced by explicit mutators, such
-as `JsonException`, can propagate directly.
+as `JsonException`, can propagate directly. Missing required properties and
+values that cannot satisfy a nested hydrator's array input contract also fail
+through `HydrationException`.

@@ -48,46 +48,52 @@ rules that protect the fast path.
 The maintained competitor benchmark measures warmed hydration of correctly
 typed five-property arrays into new objects with private promoted properties or
 ordinary public typed properties. It compares these specific hot paths, not the
-complete feature scope of each library.
+complete feature scope of each library. Relative values use HydraType as the
+1.00x baseline.
 
 ### Private properties
 
 | Hydrator                   |     PHP 8.2 | Relative |     PHP 8.5 | Relative |
 |----------------------------|------------:|---------:|------------:|---------:|
-| HydraType                  |    266.9 ns |    1.00x |    294.7 ns |    1.00x |
-| Ocramius GeneratedHydrator |    309.6 ns |    1.16x |    353.0 ns |    1.20x |
-| EventSauce generated       |    339.8 ns |    1.27x |    369.2 ns |    1.25x |
-| JoliCode AutoMapper 10     |           — |        — |    485.2 ns |    1.65x |
-| Patchlevel Hydrator        |    789.7 ns |    2.96x |    709.4 ns |    2.41x |
-| Laminas ReflectionHydrator |  1,225.9 ns |    4.59x |  1,069.9 ns |    3.63x |
-| Crell Serde (array)        |  7,955.1 ns |   29.81x |  7,923.5 ns |   26.89x |
-| Symfony PropertyNormalizer |  8,473.8 ns |   31.75x |  8,413.1 ns |   28.55x |
-| Sunrise Hydrator           |  9,650.7 ns |   36.16x |  9,436.6 ns |   32.02x |
-| Valinor                    | 10,808.6 ns |   40.50x | 11,339.5 ns |   38.48x |
+| HydraType                  |    280.0 ns |    1.00x |    296.7 ns |    1.00x |
+| Ocramius GeneratedHydrator |    309.6 ns |    1.11x |    353.0 ns |    1.19x |
+| EventSauce generated       |    339.8 ns |    1.21x |    369.2 ns |    1.24x |
+| JoliCode AutoMapper 10     |           — |        — |    485.2 ns |    1.64x |
+| Patchlevel Hydrator        |    789.7 ns |    2.82x |    709.4 ns |    2.39x |
+| Laminas ReflectionHydrator |  1,225.9 ns |    4.38x |  1,069.9 ns |    3.61x |
+| Crell Serde (array)        |  7,955.1 ns |   28.41x |  7,923.5 ns |   26.71x |
+| Symfony PropertyNormalizer |  8,473.8 ns |   30.26x |  8,413.1 ns |   28.36x |
+| Sunrise Hydrator           |  9,650.7 ns |   34.47x |  9,436.6 ns |   31.81x |
+| Valinor                    | 10,808.6 ns |   38.60x | 11,339.5 ns |   38.22x |
 
 ### Public properties
 
 | Hydrator                         |     PHP 8.2 | Relative |     PHP 8.5 | Relative |
 |----------------------------------|------------:|---------:|------------:|---------:|
-| HydraType                        |    187.4 ns |    1.00x |    190.4 ns |    1.00x |
-| Ocramius GeneratedHydrator       |    190.7 ns |    1.02x |    209.6 ns |    1.10x |
+| HydraType                        |    193.0 ns |    1.00x |    194.2 ns |    1.00x |
+| Ocramius GeneratedHydrator       |    190.7 ns |    0.99x |    209.6 ns |    1.08x |
 | EventSauce generated             |           — |        — |           — |        — |
-| JoliCode AutoMapper 10           |           — |        — |  1,207.2 ns |    6.34x |
-| Patchlevel Hydrator              |    808.5 ns |    4.31x |    718.7 ns |    3.78x |
-| Laminas ObjectPropertyHydrator   |    958.0 ns |    5.11x |    851.8 ns |    4.47x |
-| Symfony PropertyNormalizer       |  8,040.0 ns |   42.90x |  7,624.8 ns |   40.05x |
-| Crell Serde (array)              |  8,088.4 ns |   43.15x |  7,968.8 ns |   41.86x |
-| Sunrise Hydrator                 |  9,132.6 ns |   48.72x |  8,832.3 ns |   46.40x |
-| Valinor                          | 10,367.2 ns |   55.31x | 10,734.7 ns |   56.39x |
+| JoliCode AutoMapper 10           |           — |        — |  1,207.2 ns |    6.22x |
+| Patchlevel Hydrator              |    808.5 ns |    4.19x |    718.7 ns |    3.70x |
+| Laminas ObjectPropertyHydrator   |    958.0 ns |    4.96x |    851.8 ns |    4.39x |
+| Symfony PropertyNormalizer       |  8,040.0 ns |   41.66x |  7,624.8 ns |   39.26x |
+| Crell Serde (array)              |  8,088.4 ns |   41.91x |  7,968.8 ns |   41.03x |
+| Sunrise Hydrator                 |  9,132.6 ns |   47.32x |  8,832.3 ns |   45.48x |
+| Valinor                          | 10,367.2 ns |   53.72x | 10,734.7 ns |   55.28x |
 
-HydraType was fastest for both property visibility cases in both environments.
+HydraType was fastest for private properties in both environments and for
+public properties on PHP 8.5. The PHP 8.2 public paths were effectively tied:
+HydraType and Ocramius were separated by about 1% and exchanged order between
+individual rounds. Ocramius directly assigns keys that are present and skips
+missing keys. HydraType additionally checks required keys and coerces values to
+the declared property types.
 
 > **Faster still in batches**
 >
 > In the maintained batch benchmark, `hydrateMany()` is **37% faster** per
-> object than repeated `hydrate()` calls on PHP 8.2 and **30% faster** on PHP
+> object than repeated `hydrate()` calls on PHP 8.2 and **29% faster** on PHP
 > 8.5. In a like-for-like comparison with handwritten PHP, it comes within
-> about 20% and 14% respectively.
+> about 23% and 16% respectively.
 
 See the [benchmark methodology and complete conclusions](benchmarks/README.md).
 

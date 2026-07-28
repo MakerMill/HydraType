@@ -26,8 +26,8 @@ it('compiles case normalization directly into property assignments', function ()
         'countryCode' => 'SE',
         'alias' => 'mixedcase',
     ])->and($writer)
-        ->toContain('strtolower((string) trim((string) $data[\'email\']')
-        ->toContain('strtoupper((string) $data[\'countryCode\'])');
+        ->toContain('strtolower((string) trim((string) ($data[\'email\'] ??')
+        ->toContain('strtoupper((string) ($data[\'countryCode\'] ??');
 });
 
 it('bypasses case normalization for nullable input', function () {
