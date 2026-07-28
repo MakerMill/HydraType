@@ -72,8 +72,8 @@ it('extracts an object using snake case', function () {
 
 it('extracts multiple objects with one naming convention', function () {
     $records = [
-        new TypedRecord(1, 'First', true, RecordState::Active),
-        new TypedRecord(2, 'Second', false, RecordState::Archived),
+        5 => new TypedRecord(1, 'First', true, RecordState::Active),
+        9 => new TypedRecord(2, 'Second', false, RecordState::Archived),
     ];
     $hydra = testHydraType();
 

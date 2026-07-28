@@ -307,7 +307,7 @@ final readonly class HydratorCompiler
         $code->openInline('if (empty($dataSet))');
         $code->line("throw HydrationException::forEmptyData({$className}::class);");
         $code->close();
-        $code->line('$firstData = reset($dataSet);');
+        $code->line('$firstData = $dataSet[array_key_first($dataSet)];');
         // A batch is required to use one naming convention, so selection happens once outside its object loop.
         if ($usesDirectHydration && $camelHydrationCode !== $snakeHydrationCode) {
             $selectionExpression = $this->generateSnakeCaseSelectionExpression('$firstData');

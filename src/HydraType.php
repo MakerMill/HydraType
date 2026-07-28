@@ -74,7 +74,7 @@ final class HydraType
             return [];
         }
 
-        $firstObject = reset($objects);
+        $firstObject = $objects[array_key_first($objects)];
 
         return $this->hydrator($firstObject::class)->extractMany($objects, $namingConvention);
     }

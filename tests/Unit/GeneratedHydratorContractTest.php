@@ -21,6 +21,7 @@ it('keeps the unselected generated property path minimal', function () {
     $source = readGeneratedFile($descriptor->getHydratorFilePath());
     $extractBody = GeneratedHydratorInspector::methodBody($source, 'extract');
     $extractManyBody = GeneratedHydratorInspector::methodBody($source, 'extractMany');
+    $hydrateManyBody = GeneratedHydratorInspector::methodBody($source, 'hydrateMany');
 
     expect($record->values())->toBe(['id' => 42, 'displayName' => '123'])
         ->and($hydra->extract($record))->toBe(['id' => 42, 'displayName' => '123'])
@@ -44,8 +45,8 @@ return ['id' => $object->id, 'display_name' => $object->displayName];
 PHP)
         ->and(GeneratedHydratorInspector::methodBody($source, 'hydrate'))
         ->toContain('$object = new PlainRecord();')
-        ->and(GeneratedHydratorInspector::methodBody($source, 'hydrateMany'))
-        ->toContain('$object = new PlainRecord();')
+        ->and($hydrateManyBody)->toContain('$object = new PlainRecord();')
+        ->and($hydrateManyBody)->toContain('$firstData = $dataSet[array_key_first($dataSet)];')
         ->and($extractBody)
         ->toContain('return ($this->snakeReader ??= $this->createSnakeReader())($object);')
         ->and($extractBody)
