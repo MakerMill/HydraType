@@ -83,6 +83,30 @@ The public-property values are averages of three round medians.
 HydraType was fastest for public properties in both environments. Ocramius
 GeneratedHydrator was closest at 1.02x on PHP 8.2 and 1.10x on PHP 8.5.
 
+## Batch hydration
+
+The batch benchmark used the same correctly typed five-field private-property
+fixture as the competitor benchmark. It compared repeated calls to the public
+`HydraType::hydrate()` facade, its dedicated `hydrateMany()` path, and
+handwritten PHP that passed cast array values directly to the constructor.
+Unlike the competitor benchmark, this comparison includes facade dispatch and
+retains every resulting object in an array so repeated `hydrate()` calls perform
+the same consumer-visible work as `hydrateMany()`.
+
+The cache was warmed before measurement. Each round used nine samples of
+500,000 objects in batches of 1,000. The recorded values are averages of three
+round medians from the standardized PHP 8.2 and PHP 8.5 Docker environments.
+
+| Method                         |  PHP 8.2 | Relative |  PHP 8.5 | Relative |
+|--------------------------------|---------:|---------:|---------:|---------:|
+| Handwritten PHP                | 168.7 ns |    1.00x | 204.5 ns |    1.00x |
+| HydraType `hydrateMany()`      | 203.0 ns |    1.20x | 232.3 ns |    1.14x |
+| Repeated HydraType `hydrate()` | 323.8 ns |    1.92x | 331.7 ns |    1.62x |
+
+`hydrateMany()` was 37.3% faster per object than repeated `hydrate()` calls on
+PHP 8.2 and 30.0% faster on PHP 8.5. Compared with handwritten PHP, it added
+20.4% and 13.6% respectively.
+
 ## Individual private-property writes
 
 The first benchmark compared common ways to perform repeated writes to one private

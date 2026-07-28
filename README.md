@@ -81,6 +81,14 @@ complete feature scope of each library.
 | Valinor                          | 10,367.2 ns |   55.31x | 10,734.7 ns |   56.39x |
 
 HydraType was fastest for both property visibility cases in both environments.
+
+> **Faster still in batches**
+>
+> In the maintained batch benchmark, `hydrateMany()` is **37% faster** per
+> object than repeated `hydrate()` calls on PHP 8.2 and **30% faster** on PHP
+> 8.5. In a like-for-like comparison with handwritten PHP, it comes within
+> about 20% and 14% respectively.
+
 See the [benchmark methodology and complete conclusions](benchmarks/README.md).
 
 ## Install
@@ -142,10 +150,17 @@ $camelData = $hydra->extract($user);
 $snakeData = $hydra->extract($user, NamingConvention::SnakeCase);
 ```
 
-Use `hydrateMany()` and `extractMany()` for batches. For an especially focused
-hot path, `$hydra->hydrator(User::class)` returns a reusable class-specific
-hydrator. See [hydration and extraction](docs/hydration.md) for naming, type
-conversion, batch behavior, nullability, and constructor semantics.
+Use the optimized batch paths when working with several objects:
+
+```php
+$users = $hydra->hydrateMany(User::class, $inputRows);
+$outputRows = $hydra->extractMany($users, NamingConvention::SnakeCase);
+```
+
+For an especially focused hot path, `$hydra->hydrator(User::class)` returns a
+reusable class-specific hydrator. See
+[hydration and extraction](docs/hydration.md) for naming, type conversion,
+batch behavior, nullability, and constructor semantics.
 
 ## Opt-in behavior
 
