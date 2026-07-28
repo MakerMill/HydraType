@@ -1,16 +1,16 @@
 # HydraType
 
-HydraType is a compiled object hydrator and extractor built to be one of the
-fastest general-purpose hydrators available for PHP. It combines generated-code
-performance with automatic type conversion, nested objects, composable
-mutators, assertions, and extraction in both camel case and snake case.
+HydraType is a high-performance, compiled object hydrator and extractor for PHP.
+It turns arrays from databases, APIs, and queues into typed objects and those
+objects back into arrays, using generated PHP specialized for each class.
 
 No schema, adapter, base class, interface, or setters are required.
 
 ## High-throughput hydration without mapping boilerplate
 
-HydraType turns arrays from databases, APIs, and queues into typed objects—and
-extracts those objects back to arrays—with an intentionally small API:
+The PHP class is the mapping definition. HydraType reads its property types and
+attributes, then compiles the work into direct object creation, conversion, and
+property access:
 
 - hydrate public, protected, and private properties directly;
 - convert scalar values and backed enums automatically;
@@ -20,82 +20,8 @@ extracts those objects back to arrays—with an intentionally small API:
 - process batches through specialized hot paths; and
 - pre-generate the complete cache for minimal production startup cost.
 
-The basic path stays basic. Advanced behavior is opt-in and is compiled only
-into the properties that use it, so a feature does not slow down classes that
-do not select it.
-
-## Performance is the feature
-
-HydraType reflects each class once and generates executable PHP specialized for
-that exact object shape. Repeated hydration is reduced to object creation,
-inline conversion, and straight-line property assignment. Private properties
-are accessed through reusable class-scoped closures, and batch operations select
-a writer once for the complete batch.
-
-Optional features follow a strict rule: a class that does not select a feature
-does not pay for it during hydration or extraction. There are no runtime
-registries, mapping walks, or mutator dispatch calls in the ordinary property
-path.
-
-This is not a generic runtime mapping pipeline with a cache placed in front of
-it. The cache contains the optimized implementation for the target class. The
-generated-code choices are backed by cross-version microbenchmarks and direct
-competitor benchmarks. See the [architecture](docs/architecture.md) for the
-rules that protect the fast path.
-
-## Performance comparison
-
-The maintained competitor benchmark measures warmed hydration of correctly
-typed five-property arrays into new objects with private promoted properties or
-ordinary public typed properties. It compares these specific hot paths, not the
-complete feature scope of each library. Relative values use HydraType as the
-1.00x baseline.
-
-### Private properties
-
-| Hydrator                   |     PHP 8.2 | Relative |     PHP 8.5 | Relative |
-|----------------------------|------------:|---------:|------------:|---------:|
-| HydraType                  |    280.0 ns |    1.00x |    296.7 ns |    1.00x |
-| Ocramius GeneratedHydrator |    309.6 ns |    1.11x |    353.0 ns |    1.19x |
-| EventSauce generated       |    339.8 ns |    1.21x |    369.2 ns |    1.24x |
-| JoliCode AutoMapper 10     |           — |        — |    485.2 ns |    1.64x |
-| Patchlevel Hydrator        |    789.7 ns |    2.82x |    709.4 ns |    2.39x |
-| Laminas ReflectionHydrator |  1,225.9 ns |    4.38x |  1,069.9 ns |    3.61x |
-| Crell Serde (array)        |  7,955.1 ns |   28.41x |  7,923.5 ns |   26.71x |
-| Symfony PropertyNormalizer |  8,473.8 ns |   30.26x |  8,413.1 ns |   28.36x |
-| Sunrise Hydrator           |  9,650.7 ns |   34.47x |  9,436.6 ns |   31.81x |
-| Valinor                    | 10,808.6 ns |   38.60x | 11,339.5 ns |   38.22x |
-
-### Public properties
-
-| Hydrator                         |     PHP 8.2 | Relative |     PHP 8.5 | Relative |
-|----------------------------------|------------:|---------:|------------:|---------:|
-| HydraType                        |    193.0 ns |    1.00x |    194.2 ns |    1.00x |
-| Ocramius GeneratedHydrator       |    190.7 ns |    0.99x |    209.6 ns |    1.08x |
-| EventSauce generated             |           — |        — |           — |        — |
-| JoliCode AutoMapper 10           |           — |        — |  1,207.2 ns |    6.22x |
-| Patchlevel Hydrator              |    808.5 ns |    4.19x |    718.7 ns |    3.70x |
-| Laminas ObjectPropertyHydrator   |    958.0 ns |    4.96x |    851.8 ns |    4.39x |
-| Symfony PropertyNormalizer       |  8,040.0 ns |   41.66x |  7,624.8 ns |   39.26x |
-| Crell Serde (array)              |  8,088.4 ns |   41.91x |  7,968.8 ns |   41.03x |
-| Sunrise Hydrator                 |  9,132.6 ns |   47.32x |  8,832.3 ns |   45.48x |
-| Valinor                          | 10,367.2 ns |   53.72x | 10,734.7 ns |   55.28x |
-
-HydraType was fastest for private properties in both environments and for
-public properties on PHP 8.5. The PHP 8.2 public paths were effectively tied:
-HydraType and Ocramius were separated by about 1% and exchanged order between
-individual rounds. Ocramius directly assigns keys that are present and skips
-missing keys. HydraType additionally checks required keys and coerces values to
-the declared property types.
-
-> **Faster still in batches**
->
-> In the maintained batch benchmark, `hydrateMany()` is **37% faster** per
-> object than repeated `hydrate()` calls on PHP 8.2 and **29% faster** on PHP
-> 8.5. In a like-for-like comparison with handwritten PHP, it comes within
-> about 23% and 16% respectively.
-
-See the [benchmark methodology and complete conclusions](benchmarks/README.md).
+Use HydraType as a simple hydrator, or add behavior property by property.
+Features that a class does not select generate no work on its hydration path.
 
 ## Install
 
@@ -167,6 +93,84 @@ For an especially focused hot path, `$hydra->hydrator(User::class)` returns a
 reusable class-specific hydrator. See
 [hydration and extraction](docs/hydration.md) for naming, type conversion,
 batch behavior, nullability, and constructor semantics.
+
+## Performance is the feature
+
+HydraType reflects each class once and generates executable PHP specialized for
+that exact object shape. Repeated hydration is reduced to object creation,
+inline conversion, and straight-line property assignment. Private properties
+are accessed through reusable class-scoped closures, and batch operations select
+a writer once for the complete batch.
+
+Optional features follow a strict rule: a class that does not select a feature
+does not pay for it during hydration or extraction. There are no runtime
+registries, mapping walks, or mutator dispatch calls in the ordinary property
+path.
+
+This is not a generic runtime mapping pipeline with a cache placed in front of
+it. The cache contains the optimized implementation for the target class. The
+generated-code choices are backed by cross-version microbenchmarks and direct
+competitor benchmarks. See the [architecture](docs/architecture.md) for the
+rules that protect the fast path.
+
+## Performance comparison
+
+In the maintained benchmarks, HydraType was fastest for private-property
+hydration on PHP 8.2 and PHP 8.5. Its public-property path was effectively tied
+for fastest on PHP 8.2 and fastest on PHP 8.5. The optimized batch path came
+within 16–23% of equivalent handwritten PHP.
+
+The maintained competitor benchmark measures warmed hydration of correctly
+typed five-property arrays into new objects with private promoted properties or
+ordinary public typed properties. These are focused hot-path comparisons rather
+than comparisons of every feature offered by each library. Relative values use
+HydraType as the 1.00x baseline.
+
+### Private properties
+
+| Hydrator                   |     PHP 8.2 | Relative |     PHP 8.5 | Relative |
+|----------------------------|------------:|---------:|------------:|---------:|
+| HydraType                  |    280.0 ns |    1.00x |    296.7 ns |    1.00x |
+| Ocramius GeneratedHydrator |    309.6 ns |    1.11x |    353.0 ns |    1.19x |
+| EventSauce generated       |    339.8 ns |    1.21x |    369.2 ns |    1.24x |
+| JoliCode AutoMapper 10     |           — |        — |    485.2 ns |    1.64x |
+| Patchlevel Hydrator        |    789.7 ns |    2.82x |    709.4 ns |    2.39x |
+| Laminas ReflectionHydrator |  1,225.9 ns |    4.38x |  1,069.9 ns |    3.61x |
+| Crell Serde (array)        |  7,955.1 ns |   28.41x |  7,923.5 ns |   26.71x |
+| Symfony PropertyNormalizer |  8,473.8 ns |   30.26x |  8,413.1 ns |   28.36x |
+| Sunrise Hydrator           |  9,650.7 ns |   34.47x |  9,436.6 ns |   31.81x |
+| Valinor                    | 10,808.6 ns |   38.60x | 11,339.5 ns |   38.22x |
+
+### Public properties
+
+| Hydrator                         |     PHP 8.2 | Relative |     PHP 8.5 | Relative |
+|----------------------------------|------------:|---------:|------------:|---------:|
+| HydraType                        |    193.0 ns |    1.00x |    194.2 ns |    1.00x |
+| Ocramius GeneratedHydrator       |    190.7 ns |    0.99x |    209.6 ns |    1.08x |
+| EventSauce generated             |           — |        — |           — |        — |
+| JoliCode AutoMapper 10           |           — |        — |  1,207.2 ns |    6.22x |
+| Patchlevel Hydrator              |    808.5 ns |    4.19x |    718.7 ns |    3.70x |
+| Laminas ObjectPropertyHydrator   |    958.0 ns |    4.96x |    851.8 ns |    4.39x |
+| Symfony PropertyNormalizer       |  8,040.0 ns |   41.66x |  7,624.8 ns |   39.26x |
+| Crell Serde (array)              |  8,088.4 ns |   41.91x |  7,968.8 ns |   41.03x |
+| Sunrise Hydrator                 |  9,132.6 ns |   47.32x |  8,832.3 ns |   45.48x |
+| Valinor                          | 10,367.2 ns |   53.72x | 10,734.7 ns |   55.28x |
+
+HydraType was fastest for private properties in both environments and for
+public properties on PHP 8.5. The PHP 8.2 public paths were effectively tied:
+HydraType and Ocramius were separated by about 1% and exchanged order between
+individual rounds. Ocramius directly assigns keys that are present and skips
+missing keys. HydraType additionally checks required keys and coerces values to
+the declared property types.
+
+> **Faster still in batches**
+>
+> In the maintained batch benchmark, `hydrateMany()` is **37% faster** per
+> object than repeated `hydrate()` calls on PHP 8.2 and **29% faster** on PHP
+> 8.5. In a like-for-like comparison with handwritten PHP, it comes within
+> about 23% and 16% respectively.
+
+See the [benchmark methodology and complete conclusions](benchmarks/README.md).
 
 ## Opt-in behavior
 
@@ -259,18 +263,18 @@ cache clearing.
 
 ## Supported behavior at a glance
 
-| Capability | Behavior |
-|---|---|
-| Input names | Automatic camel case or snake case |
-| Output names | Camel case by default; snake case on request |
-| Type conversion | Scalars, booleans, arrays, objects, and backed enums |
-| Property access | Public, protected, and private instance properties |
-| Object creation | Direct `new` without a constructor; constructor bypass otherwise |
-| Nested objects | Concrete classes automatically; abstractions through `HydrateAs` |
-| Transformations | Compiled, composable property mutators |
-| Assertions | Compiled, opt-in, fail-fast property guards |
-| Batches | Specialized `hydrateMany()` and `extractMany()` paths |
-| Cache | Automatic development mode and pre-generated read-only production mode |
+| Capability      | Behavior                                                               |
+|-----------------|------------------------------------------------------------------------|
+| Input names     | Automatic camel case or snake case                                     |
+| Output names    | Camel case by default; snake case on request                           |
+| Type conversion | Scalars, booleans, arrays, objects, and backed enums                   |
+| Property access | Public, protected, and private instance properties                     |
+| Object creation | Direct `new` without a constructor; constructor bypass otherwise       |
+| Nested objects  | Concrete classes automatically; abstractions through `HydrateAs`       |
+| Transformations | Compiled, composable property mutators                                 |
+| Assertions      | Compiled, opt-in, fail-fast property guards                            |
+| Batches         | Specialized `hydrateMany()` and `extractMany()` paths                  |
+| Cache           | Automatic development mode and pre-generated read-only production mode |
 
 Unbacked enums, union types, intersection types, inferred collections of nested
 objects, and runtime object-graph cycles are not supported.
